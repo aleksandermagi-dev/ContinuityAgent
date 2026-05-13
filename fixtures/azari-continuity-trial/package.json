@@ -1,0 +1,10 @@
+{
+  "name": "azari-continuity-trial-fixture",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json",
+    "system_sweep": "python -m azari.validation.system_sweep",
+    "validate": "npm run test && npm run system_sweep"
+  }
+}
