@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { FileSnapshot, FolderSnapshotFile, ProjectCandidate, ProjectCheck, ProjectSignal } from "../../shared/types";
+import type { FileSnapshot, FolderSnapshotFile, ProjectCandidate, ProjectCheck, ProjectDiscoveryScanResult, ProjectDiscoveryWarning, ProjectSignal } from "../../shared/types";
 import { id } from "./db";
 import { ignoredDirs, maxExcerpt, maxFiles, textExtensions, type BrowserFolderFileInput } from "./folders";
 
@@ -68,57 +68,94 @@ export function summarizeFileSnapshot(snapshot: FileSnapshot) {
 }
 
 export function scanLocalProjects(rootPath: string): ProjectCandidate[] {
+  return scanLocalProjectDiscovery(rootPath).candidates;
+}
+
+export function scanLocalProjectDiscovery(rootPath: string): ProjectDiscoveryScanResult {
   const root = path.resolve(rootPath);
   const stat = fs.statSync(root);
   if (!stat.isDirectory()) throw new Error("Scan path must point to a directory.");
   const candidates: ProjectCandidate[] = [];
-  const roots = [
-    ...(hasDirectEvidence(root) ? [root] : []),
-    ...safeDirents(root).filter((entry) => entry.isDirectory() && !ignoredDirs.has(entry.name)).map((entry) => path.join(root, entry.name))
-  ];
+  let ignored_folder_count = countIgnoredFolders(root, 2);
+  let unreadable_file_count = 0;
+  const roots = hasDirectEvidence(root)
+    ? [root]
+    : safeDirents(root)
+      .filter((entry) => entry.isDirectory() && !isIgnoredDirectory(entry.name) && !isLowValueCandidateName(entry.name))
+      .map((entry) => path.join(root, entry.name));
   for (const candidateRoot of roots) {
-    const candidate = candidateFromLocalPath(candidateRoot);
+    const scan = collectLocalFiles(candidateRoot);
+    unreadable_file_count += scan.unreadableCount;
+    const candidate = candidateFromCollectedFiles(candidateRoot, scan.files);
     if (candidate) candidates.push(candidate);
     if (candidates.length >= 40) break;
   }
-  return dedupeCandidates(candidates).sort((a, b) => b.confidence - a.confidence);
+  const deduped = dedupeCandidates(candidates).sort((a, b) => b.confidence - a.confidence);
+  return {
+    candidates: deduped,
+    warnings: scanWarnings(deduped, ignored_folder_count, unreadable_file_count),
+    ignored_folder_count,
+    unreadable_file_count,
+    scanned_at: new Date().toISOString()
+  };
 }
 
 export function scanBrowserProjects(folderName: string, files: BrowserFolderFileInput[]): ProjectCandidate[] {
+  return scanBrowserProjectDiscovery(folderName, files).candidates;
+}
+
+export function scanBrowserProjectDiscovery(folderName: string, files: BrowserFolderFileInput[]): ProjectDiscoveryScanResult {
   const groups = new Map<string, BrowserFolderFileInput[]>();
+  let ignored_folder_count = 0;
   for (const file of files.slice(0, 600)) {
     const normalized = normalizePath(file.path);
     const root = normalized.includes("/") ? normalized.split("/")[0] : folderName || "Selected folder";
+    if (isIgnoredDirectory(root) || isLowValueCandidateName(root)) {
+      ignored_folder_count += 1;
+      continue;
+    }
     const relative = normalized.includes("/") ? normalized.split("/").slice(1).join("/") : normalized;
     const list = groups.get(root) ?? [];
     list.push({ ...file, path: relative || normalized });
     groups.set(root, list);
   }
-  return Array.from(groups.entries())
+  const candidates = Array.from(groups.entries())
     .map(([name, group]) => candidateFromFiles(name, name, "browser-selection", group))
     .filter((candidate): candidate is ProjectCandidate => Boolean(candidate))
     .sort((a, b) => b.confidence - a.confidence);
+  const deduped = dedupeCandidates(candidates);
+  return {
+    candidates: deduped,
+    warnings: scanWarnings(deduped, ignored_folder_count, 0),
+    ignored_folder_count,
+    unreadable_file_count: 0,
+    scanned_at: new Date().toISOString()
+  };
 }
 
 export function candidateFromFiles(name: string, candidatePath: string, source: ProjectCandidate["source"], files: BrowserFolderFileInput[]): ProjectCandidate | undefined {
-  const capped = files.slice(0, maxFiles);
+  if (isIgnoredDirectory(name) || isLowValueCandidateName(name)) return undefined;
+  const capped = files.filter((file) => !hasIgnoredPathSegment(file.path)).slice(0, maxFiles);
   const normalized: FolderSnapshotFile[] = capped.map((file) => {
     const filePath = normalizePath(file.path);
     const kind = isTextFile(filePath) ? "text" as const : "binary" as const;
     return { path: filePath, size: file.size, kind, excerpt: kind === "text" ? (file.text ?? "").slice(0, maxExcerpt) : undefined };
   });
   const evidence = evidenceFromFiles(normalized);
-  if (!evidence.length && normalized.length < 2) return undefined;
   const readme = findReadme(normalized);
   const checks = detectChecks(normalized);
   const signals = detectSignals(normalized, checks);
+  const stack = detectStack(normalized);
+  if (!evidence.length && !checks.length && !stack.length) return undefined;
+  const detection_reasons = detectionReasons(normalized, evidence, checks, signals);
   return {
     id: id(),
     name,
     path: candidatePath,
     evidence_files: evidence,
+    detection_reasons,
     readme_preview: compactSummary(readme?.excerpt || normalized.find((file) => file.excerpt)?.excerpt || ""),
-    detected_stack: detectStack(normalized),
+    detected_stack: stack,
     detected_checks: checks,
     signals,
     confidence: confidenceFor(evidence, checks, signals),
@@ -128,7 +165,11 @@ export function candidateFromFiles(name: string, candidatePath: string, source: 
 }
 
 function candidateFromLocalPath(candidateRoot: string): ProjectCandidate | undefined {
-  const files = collectLocalFiles(candidateRoot);
+  const scan = collectLocalFiles(candidateRoot);
+  return candidateFromCollectedFiles(candidateRoot, scan.files);
+}
+
+function candidateFromCollectedFiles(candidateRoot: string, files: FolderSnapshotFile[]): ProjectCandidate | undefined {
   if (!files.length) return undefined;
   return candidateFromFiles(path.basename(candidateRoot), candidateRoot, "local-path", files.map((file) => ({
     path: file.path,
@@ -141,8 +182,9 @@ function hasDirectEvidence(root: string) {
   return safeDirents(root).some((entry) => entry.isFile() && evidenceNames.has(entry.name.toLowerCase()));
 }
 
-function collectLocalFiles(root: string): FolderSnapshotFile[] {
+function collectLocalFiles(root: string): { files: FolderSnapshotFile[]; unreadableCount: number } {
   const files: FolderSnapshotFile[] = [];
+  let unreadableCount = 0;
   function walk(dir: string, depth: number) {
     if (files.length >= maxFiles || depth > 3) return;
     for (const entry of safeDirents(dir)) {
@@ -150,12 +192,13 @@ function collectLocalFiles(root: string): FolderSnapshotFile[] {
       const fullPath = path.join(dir, entry.name);
       const relative = normalizePath(path.relative(root, fullPath));
       if (entry.isDirectory()) {
-        if (!ignoredDirs.has(entry.name)) walk(fullPath, depth + 1);
+        if (!isIgnoredDirectory(entry.name) && !isLowValueCandidateName(entry.name)) walk(fullPath, depth + 1);
         continue;
       }
       if (!entry.isFile()) continue;
       const stat = safeStat(fullPath);
       if (!stat) {
+        unreadableCount += 1;
         files.push({ path: relative, size: 0, kind: "skipped" });
         continue;
       }
@@ -164,7 +207,7 @@ function collectLocalFiles(root: string): FolderSnapshotFile[] {
     }
   }
   walk(root, 0);
-  return files;
+  return { files, unreadableCount };
 }
 
 export function detectChecks(files: FolderSnapshotFile[]): CheckDraft[] {
@@ -280,11 +323,96 @@ function dedupeChecks(checks: CheckDraft[]) {
 
 function dedupeCandidates(candidates: ProjectCandidate[]) {
   const seen = new Set<string>();
-  return candidates.filter((candidate) => {
-    if (seen.has(candidate.path)) return false;
-    seen.add(candidate.path);
-    return candidate.confidence >= 0.32;
-  });
+  const bySummary = new Set<string>();
+  return candidates
+    .filter((candidate) => candidate.confidence >= 0.32)
+    .sort((a, b) => rootStrength(b) - rootStrength(a))
+    .filter((candidate) => {
+      const summaryKey = normalizeSummary(candidate.readme_preview);
+      if (seen.has(candidate.path) || (summaryKey && bySummary.has(summaryKey))) return false;
+      seen.add(candidate.path);
+      if (summaryKey) bySummary.add(summaryKey);
+      return true;
+    });
+}
+
+function isIgnoredDirectory(name: string) {
+  const lower = name.toLowerCase();
+  return ignoredDirs.has(lower) || (lower.startsWith(".") && lower !== ".github");
+}
+
+function hasIgnoredPathSegment(filePath: string) {
+  return normalizePath(filePath).split("/").some((part) => isIgnoredDirectory(part));
+}
+
+function isLowValueCandidateName(name: string) {
+  return /^(debug logs?|logs?|tmp|temp|cache|caches)$/i.test(name.trim());
+}
+
+function detectionReasons(files: FolderSnapshotFile[], evidence: string[], checks: CheckDraft[], signals: SignalDraft[]) {
+  const reasons = new Set<string>();
+  const paths = files.map((file) => file.path.toLowerCase());
+  if (paths.some((file) => /(^|\/)readme\.(md|txt)$/.test(file))) reasons.add("README found");
+  if (paths.some((file) => file.endsWith("package.json"))) reasons.add("package.json scripts");
+  if (checks.some((check) => check.check_type === "validation")) reasons.add("validation command");
+  if (signals.some((signal) => signal.signal_type === "why-layer")) reasons.add("why-layer docs");
+  if (signals.some((signal) => signal.signal_type === "entrypoint")) reasons.add("source entrypoint");
+  if (evidence.length) reasons.add("project evidence");
+  return Array.from(reasons).slice(0, 6);
+}
+
+function scanWarnings(candidates: ProjectCandidate[], ignoredFolderCount: number, unreadableFileCount: number): ProjectDiscoveryWarning[] {
+  const warnings: ProjectDiscoveryWarning[] = [];
+  if (ignoredFolderCount > 0) {
+    warnings.push({ code: "generated-folders-skipped", severity: "info", message: `Skipped ${ignoredFolderCount} generated/cache folder${ignoredFolderCount === 1 ? "" : "s"} during discovery.` });
+  }
+  if (ignoredFolderCount >= 3 && ignoredFolderCount > candidates.length) {
+    warnings.push({ code: "mostly-generated-output", severity: "warning", message: "This scan included many generated/cache folders. Make sure the selected folder is the project root or a clean parent folder." });
+  }
+  if (unreadableFileCount > 0) {
+    warnings.push({ code: "unreadable-files-skipped", severity: "info", message: `Skipped ${unreadableFileCount} unreadable file${unreadableFileCount === 1 ? "" : "s"} without failing the scan.` });
+  }
+  if (!candidates.length) {
+    warnings.push({ code: "no-candidates", severity: "warning", message: "No trackable project candidates were found. Try selecting the project root or a parent folder with README/config files." });
+    return warnings;
+  }
+  if (candidates.every((candidate) => candidate.confidence < 0.5)) {
+    warnings.push({ code: "low-confidence-scan", severity: "warning", message: "The scan found only low-confidence candidates. Review the evidence before tracking." });
+  }
+  if (!candidates.some((candidate) => candidate.evidence_files.some((file) => /(^|\/)(readme\.md|package\.json|pyproject\.toml|cargo\.toml)$/i.test(file)))) {
+    warnings.push({ code: "no-strong-project-root", severity: "warning", message: "No candidate had strong root evidence such as README or package/config files." });
+  }
+  return warnings;
+}
+
+function countIgnoredFolders(root: string, maxDepth: number) {
+  let count = 0;
+  function walk(dir: string, depth: number) {
+    if (depth > maxDepth) return;
+    for (const entry of safeDirents(dir)) {
+      if (!entry.isDirectory()) continue;
+      if (isIgnoredDirectory(entry.name) || isLowValueCandidateName(entry.name)) {
+        count += 1;
+        continue;
+      }
+      walk(path.join(dir, entry.name), depth + 1);
+    }
+  }
+  walk(root, 0);
+  return count;
+}
+
+function rootStrength(candidate: ProjectCandidate) {
+  let score = candidate.confidence;
+  if (candidate.evidence_files.some((file) => /(^|\/)readme\.(md|txt)$/i.test(file))) score += 0.3;
+  if (candidate.evidence_files.some((file) => /(^|\/)(package\.json|pyproject\.toml|cargo\.toml)$/i.test(file))) score += 0.25;
+  if (candidate.detected_checks.some((check) => check.check_type === "validation" || check.check_type === "test")) score += 0.2;
+  if (candidate.detection_reasons.includes("source entrypoint")) score += 0.15;
+  return score;
+}
+
+function normalizeSummary(summary: string) {
+  return summary.toLowerCase().replace(/\W+/g, " ").trim().slice(0, 180);
 }
 
 function compactSummary(text: string) {

@@ -168,6 +168,7 @@ export interface ProjectCandidate {
   name: string;
   path: string;
   evidence_files: string[];
+  detection_reasons: string[];
   readme_preview: string;
   detected_stack: string[];
   detected_checks: Omit<ProjectCheck, "id" | "project_id" | "last_seen">[];
@@ -175,6 +176,20 @@ export interface ProjectCandidate {
   confidence: number;
   files: FolderSnapshotFile[];
   source: "browser-selection" | "local-path";
+}
+
+export interface ProjectDiscoveryWarning {
+  code: "generated-folders-skipped" | "low-confidence-scan" | "no-strong-project-root" | "mostly-generated-output" | "unreadable-files-skipped" | "no-candidates";
+  message: string;
+  severity: "info" | "warning";
+}
+
+export interface ProjectDiscoveryScanResult {
+  candidates: ProjectCandidate[];
+  warnings: ProjectDiscoveryWarning[];
+  ignored_folder_count: number;
+  unreadable_file_count: number;
+  scanned_at: string;
 }
 
 export interface ProjectImportResult {
@@ -237,6 +252,64 @@ export interface BenchmarkProfile {
   expected_checks: string[];
 }
 
+export type WorkflowRiskLevel = "low" | "medium" | "high";
+export type WorkflowTriggerType = "manual" | "patch" | "change-notes" | "project-snapshot";
+export type WorkflowOutputType = "review-report" | "documentation-draft" | "refactor-report" | "recommendation" | "proposed-patch";
+export type WorkflowRunStatus = "draft" | "accepted" | "rejected" | "failed";
+
+export interface WorkflowModuleDefinition {
+  id: string;
+  name: string;
+  purpose: string;
+  trigger_type: WorkflowTriggerType;
+  required_context: string[];
+  output_type: WorkflowOutputType;
+  risk_level: WorkflowRiskLevel;
+  review_required: boolean;
+}
+
+export interface WorkflowFinding {
+  title: string;
+  severity: number;
+  category: "bug" | "missing-tests" | "security" | "style" | "docs" | "refactor" | "drift" | "maintainability";
+  description: string;
+  evidence: string[];
+  recommendation: string;
+}
+
+export interface WorkflowOutput {
+  summary: string;
+  findings: WorkflowFinding[];
+  draft_comments: string[];
+  proposed_patches: string[];
+  continuity_updates: {
+    event_summary: string;
+    branch_suggestions: string[];
+    drift_warnings: Array<{
+      drift_type: string;
+      description: string;
+      severity: number;
+      evidence: string[];
+      suggested_review: string;
+    }>;
+  };
+}
+
+export interface WorkflowRun {
+  id: string;
+  project_id: string;
+  module_id: string;
+  status: WorkflowRunStatus;
+  input_summary: string;
+  output: WorkflowOutput;
+  review_required: boolean;
+  rejection_reason?: string;
+  created_at: string;
+  updated_at: string;
+  accepted_at?: string;
+  rejected_at?: string;
+}
+
 export interface ExtractionDraftPayload {
   projectSummary?: string;
   goals?: string[];
@@ -279,4 +352,5 @@ export interface ProjectOverview {
   folderSnapshots: FolderSnapshot[];
   checks: ProjectCheck[];
   signals: ProjectSignal[];
+  workflowRuns: WorkflowRun[];
 }

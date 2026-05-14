@@ -77,6 +77,32 @@ Discovery scan by browser selection:
 }
 ```
 
+Discovery scan responses include candidates plus advisory metadata:
+
+```json
+{
+  "candidates": [
+    {
+      "name": "Example App",
+      "detection_reasons": ["README found", "package.json scripts", "validation command"],
+      "confidence": 0.75
+    }
+  ],
+  "warnings": [
+    {
+      "code": "generated-folders-skipped",
+      "severity": "info",
+      "message": "Skipped generated/cache folders during discovery."
+    }
+  ],
+  "ignored_folder_count": 1,
+  "unreadable_file_count": 0,
+  "scanned_at": "2026-05-14T00:00:00.000Z"
+}
+```
+
+Warnings are advisory. Users can still track candidates after reviewing evidence.
+
 ## Health, Checks, And Reports
 
 | Method | Path | Purpose |
@@ -100,6 +126,50 @@ Detected checks are recommendations only. The app does not run discovered comman
 | `GET` | `/api/projects/:id/recent-changes` | Recent timeline changes. |
 
 Continuity packets include project state, recent changes, active decisions, unresolved branches, active tasks, detected checks, drift/stability risks, next review recommendation, and provenance counts.
+
+## Workflow Modules
+
+Workflow modules are shared continuity-aware workflows, not separate agents. They use project state and local/user-provided context, create advisory outputs, and require review before durable continuity records are added.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/workflows/modules` | List built-in workflow module definitions. |
+| `POST` | `/api/projects/:id/workflows/:moduleId/run` | Run a workflow module and create an advisory draft output. |
+| `GET` | `/api/projects/:id/workflows/runs` | List workflow runs for a project. |
+| `POST` | `/api/projects/:id/workflows/runs/:runId/accept` | Accept a draft workflow output into continuity records. |
+| `POST` | `/api/projects/:id/workflows/runs/:runId/reject` | Reject a draft workflow output and preserve the reason. |
+
+Built-in module ids:
+
+- `pr-reviewer`
+- `doc-writer`
+- `refactor-tracker`
+
+Run PR Reviewer:
+
+```json
+{
+  "patch": "+ const value = eval(userInput);"
+}
+```
+
+Run Doc Writer:
+
+```json
+{
+  "changeNotes": "Added GET /api/workflows/modules and workflow run endpoints."
+}
+```
+
+Run Refactor Tracker:
+
+```json
+{}
+```
+
+Refactor Tracker uses the project's accepted folder snapshots. If no snapshot exists, the endpoint returns a clear missing-context error.
+
+Workflow acceptance creates normal continuity records such as events, unresolved branch suggestions, and drift warnings. It does not mutate imported project files.
 
 ## Benchmarks
 

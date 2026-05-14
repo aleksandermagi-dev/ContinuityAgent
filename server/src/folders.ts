@@ -24,7 +24,22 @@ export const textExtensions = new Set([
   ".sql"
 ]);
 
-export const ignoredDirs = new Set(["node_modules", ".git", "dist", "build", ".next", ".vite", "coverage", ".cache", ".venv", "venv", "target", "data"]);
+export const ignoredDirs = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  ".next",
+  ".vite",
+  "coverage",
+  ".cache",
+  ".pytest_cache",
+  "__pycache__",
+  ".venv",
+  "venv",
+  "target",
+  "data"
+]);
 export const maxFiles = 80;
 export const maxExcerpt = 1600;
 
@@ -35,7 +50,7 @@ export interface BrowserFolderFileInput {
 }
 
 export function createSnapshotFromBrowserSelection(projectId: string, folderName: string, files: BrowserFolderFileInput[]): FolderSnapshot {
-  const normalized = files.slice(0, maxFiles).map((file) => ({
+  const normalized = files.filter((file) => !hasIgnoredPathSegment(file.path)).slice(0, maxFiles).map((file) => ({
     path: file.path,
     size: file.size,
     kind: isTextPath(file.path) ? "text" as const : "binary" as const,
@@ -95,7 +110,7 @@ function walk(root: string, dir: string, files: FolderSnapshotFile[]) {
     const fullPath = path.join(dir, entry.name);
     const relative = path.relative(root, fullPath).replace(/\\/g, "/");
     if (entry.isDirectory()) {
-      if (!ignoredDirs.has(entry.name)) walk(root, fullPath, files);
+      if (!isIgnoredPathPart(entry.name)) walk(root, fullPath, files);
       continue;
     }
     if (!entry.isFile()) continue;
@@ -137,6 +152,15 @@ function buildSnapshot(projectId: string, folderPath: string, source: FolderSnap
 
 function isTextPath(filePath: string) {
   return textExtensions.has(path.extname(filePath).toLowerCase());
+}
+
+function hasIgnoredPathSegment(filePath: string) {
+  return filePath.replace(/\\/g, "/").split("/").some((part) => isIgnoredPathPart(part));
+}
+
+function isIgnoredPathPart(part: string) {
+  const lower = part.toLowerCase();
+  return ignoredDirs.has(lower) || (lower.startsWith(".") && lower !== ".github") || /^(debug logs?|logs?|tmp|temp|cache|caches)$/i.test(part.trim());
 }
 
 function safeReadText(filePath: string) {

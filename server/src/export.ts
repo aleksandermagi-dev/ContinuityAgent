@@ -36,6 +36,9 @@ export function toMarkdown(overview: ProjectOverview) {
     "## Project Signals",
     overview.signals.map((item) => `- [${item.signal_type}] ${item.label}: ${item.description}`).join("\n") || "_No project signals yet._",
     "",
+    "## Workflow Runs",
+    overview.workflowRuns.map((item) => `- [${item.status}] ${item.module_id}: ${item.output.summary}`).join("\n") || "_No workflow runs yet._",
+    "",
     "## Latest Health Report",
     overview.latestHealthReport
       ? `${overview.latestHealthReport.summary}\n\n${list(overview.latestHealthReport.recommendations)}`

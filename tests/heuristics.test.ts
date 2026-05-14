@@ -38,7 +38,8 @@ describe("heuristic adapter", () => {
       pendingDrafts: [],
       folderSnapshots: [],
       checks: [],
-      signals: []
+      signals: [],
+      workflowRuns: []
     } satisfies ProjectOverview);
 
     expect(report.unresolved_branch_count).toBe(1);

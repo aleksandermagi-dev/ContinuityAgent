@@ -52,7 +52,8 @@ function overview(): ProjectOverview {
     pendingDrafts: [],
     folderSnapshots: [],
     checks: [{ id: "c1", project_id: "p1", command: "npm test", check_type: "test", source: "package.json", confidence: 0.95, last_seen: "" }],
-    signals: [{ id: "s1", project_id: "p1", signal_type: "stability-risk", label: "Blocked task present", description: "A blocked task needs review.", severity: 2, source: "test", timestamp: "" }]
+    signals: [{ id: "s1", project_id: "p1", signal_type: "stability-risk", label: "Blocked task present", description: "A blocked task needs review.", severity: 2, source: "test", timestamp: "" }],
+    workflowRuns: []
   };
 }
 

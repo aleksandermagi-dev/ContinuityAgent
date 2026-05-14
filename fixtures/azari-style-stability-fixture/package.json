@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "test": "vitest run",
+    "system_sweep": "node tools/system_sweep.js",
+    "health": "node tools/health-check.js"
+  }
+}

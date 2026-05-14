@@ -36,6 +36,20 @@ button:disabled {
   opacity: 0.55;
 }
 
+.secondaryButton {
+  background: #fffefa;
+  color: #293527;
+}
+
+.textButton {
+  background: transparent;
+  border: 0;
+  color: #293527;
+  justify-self: start;
+  padding: 0;
+  text-decoration: underline;
+}
+
 input,
 textarea {
   border: 1px solid #c9c4b7;
@@ -130,6 +144,7 @@ h2 {
 .workspace {
   display: grid;
   gap: 1rem;
+  min-width: 0;
   padding: 1.25rem;
 }
 
@@ -175,6 +190,7 @@ h2 {
   background: #fffefa;
   border: 1px solid #ddd7c9;
   border-radius: 8px;
+  min-width: 0;
   padding: 1rem;
 }
 
@@ -268,7 +284,8 @@ h2 {
   display: grid;
   flex: 1;
   gap: 0.5rem;
-  grid-template-columns: minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: min(100%, 320px);
 }
 
 .folderStatus {
@@ -279,7 +296,59 @@ h2 {
 .candidateGrid {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  min-width: 0;
+}
+
+.workflowGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 0.8rem 0;
+}
+
+.workflowCard {
+  background: #fffefa;
+  border-color: #d8d2c2;
+  color: #20231d;
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.workflowCard.selected {
+  background: #e8f0dc;
+  border-color: #6f8a4d;
+}
+
+.workflowCard span,
+.workflowCard small {
+  color: #697162;
+}
+
+.workflowRunner {
+  border: 1px solid #ebe5d8;
+  border-radius: 6px;
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+}
+
+.workflowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.patchPreview {
+  background: #f3f0e7;
+  border: 1px solid #ddd7c9;
+  border-radius: 6px;
+  overflow: auto;
+  padding: 0.75rem;
+  white-space: pre-wrap;
 }
 
 .candidateCard {
@@ -287,6 +356,8 @@ h2 {
   border-radius: 6px;
   display: grid;
   gap: 0.65rem;
+  min-width: 0;
+  overflow: hidden;
   padding: 0.8rem;
 }
 
@@ -295,6 +366,57 @@ h2 {
   display: flex;
   gap: 0.75rem;
   justify-content: space-between;
+  min-width: 0;
+}
+
+.candidateCard strong,
+.candidateCard span,
+.candidateCard p,
+.draftCounts span,
+.recordList strong,
+.recordList span,
+.recordList p {
+  overflow-wrap: anywhere;
+}
+
+.candidatePreview {
+  display: -webkit-box;
+  line-height: 1.35;
+  margin-bottom: 0;
+  max-height: 8.2rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.candidatePreview.expanded {
+  display: block;
+  max-height: 20rem;
+  overflow: auto;
+}
+
+.reasonPills,
+.scanWarnings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.reasonPills span,
+.scanWarning {
+  background: #f3f0e7;
+  border: 1px solid #ddd7c9;
+  border-radius: 999px;
+  color: #3e4a35;
+  font-size: 0.82rem;
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+}
+
+.scanWarning.strong {
+  background: #fff7df;
+  border-color: #d4ae46;
+  color: #5f4a11;
 }
 
 .folderStatus {

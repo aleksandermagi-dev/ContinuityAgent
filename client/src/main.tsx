@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { ExtractionDraft, Project, ProjectCandidate, ProjectImportResult, ProjectOverview } from "../../shared/types";
+import type { ExtractionDraft, Project, ProjectCandidate, ProjectDiscoveryScanResult, ProjectDiscoveryWarning, ProjectImportResult, ProjectOverview, WorkflowModuleDefinition, WorkflowRun } from "../../shared/types";
 import "./styles.css";
 
-const tabs = ["Overview", "Project Health", "Timeline / History", "Decisions / Why", "Branches", "Tasks", "Drift / Contradictions", "Connected Ideas", "Reports", "Settings / Integrations"];
+const tabs = ["Overview", "Project Health", "Workflows", "Timeline / History", "Decisions / Why", "Branches", "Tasks", "Drift / Contradictions", "Connected Ideas", "Reports", "Settings / Integrations"];
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -26,6 +26,12 @@ function App() {
   const [scanRootPath, setScanRootPath] = useState("");
   const [scanStatus, setScanStatus] = useState("No project scan started yet.");
   const [candidates, setCandidates] = useState<ProjectCandidate[]>([]);
+  const [scanWarnings, setScanWarnings] = useState<ProjectDiscoveryWarning[]>([]);
+  const [expandedCandidates, setExpandedCandidates] = useState<Set<string>>(new Set());
+  const [workflowModules, setWorkflowModules] = useState<WorkflowModuleDefinition[]>([]);
+  const [selectedWorkflow, setSelectedWorkflow] = useState("pr-reviewer");
+  const [workflowInput, setWorkflowInput] = useState("");
+  const [workflowStatus, setWorkflowStatus] = useState("Workflow outputs are drafts until accepted.");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,6 +49,10 @@ function App() {
 
   useEffect(() => {
     refreshProjects().catch((err) => setError(err.message));
+    api<WorkflowModuleDefinition[]>("/api/workflows/modules").then((modules) => {
+      setWorkflowModules(modules);
+      setSelectedWorkflow(modules[0]?.id ?? "pr-reviewer");
+    }).catch((err) => setError(err.message));
   }, []);
 
   useEffect(() => {
@@ -143,10 +153,13 @@ function App() {
     if (!scanRootPath.trim()) return;
     setBusy(true);
     setError("");
+    setCandidates([]);
+    setScanWarnings([]);
     setScanStatus(`Scanning ${scanRootPath.trim()} for projects...`);
     try {
-      const response = await api<{ candidates: ProjectCandidate[] }>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ rootPath: scanRootPath }) });
+      const response = await api<ProjectDiscoveryScanResult>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ rootPath: scanRootPath }) });
       setCandidates(response.candidates);
+      setScanWarnings(response.warnings);
       setScanStatus(response.candidates.length ? `Found ${response.candidates.length} project candidate${response.candidates.length === 1 ? "" : "s"}.` : "No trackable projects found.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not scan for projects");
@@ -160,6 +173,8 @@ function App() {
     if (!files?.length) return;
     setBusy(true);
     setError("");
+    setCandidates([]);
+    setScanWarnings([]);
     const selected = Array.from(files).slice(0, 600);
     const firstPath = selected[0]?.webkitRelativePath || selected[0]?.name || "Selected folder";
     const folderName = firstPath.split("/")[0] || "Selected folder";
@@ -170,8 +185,9 @@ function App() {
         const isText = /\.(md|txt|json|ts|tsx|js|jsx|css|html|py|rs|go|java|cs|ya?ml|toml|sql)$/i.test(relativePath);
         return { path: relativePath, size: file.size, text: isText ? await file.text() : undefined };
       }));
-      const response = await api<{ candidates: ProjectCandidate[] }>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ folderName, files: payloadFiles }) });
+      const response = await api<ProjectDiscoveryScanResult>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ folderName, files: payloadFiles }) });
       setCandidates(response.candidates);
+      setScanWarnings(response.warnings);
       setScanStatus(response.candidates.length ? `Found ${response.candidates.length} project candidate${response.candidates.length === 1 ? "" : "s"} in ${folderName}.` : `No trackable projects found in ${folderName}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not scan selected folder");
@@ -199,6 +215,15 @@ function App() {
     }
   }
 
+  function toggleCandidatePreview(candidateId: string) {
+    setExpandedCandidates((current) => {
+      const next = new Set(current);
+      if (next.has(candidateId)) next.delete(candidateId);
+      else next.add(candidateId);
+      return next;
+    });
+  }
+
   async function scanLocalPath() {
     if (!overview || !folderPath.trim()) return;
     setBusy(true);
@@ -213,6 +238,59 @@ function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not scan folder");
       setFolderSelectionStatus("Folder scan did not complete.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runWorkflow() {
+    if (!overview) return;
+    setBusy(true);
+    setError("");
+    setWorkflowStatus("Running continuity workflow...");
+    try {
+      const body = selectedWorkflow === "pr-reviewer"
+        ? { patch: workflowInput }
+        : selectedWorkflow === "doc-writer"
+          ? { changeNotes: workflowInput, patch: workflowInput }
+          : { context: workflowInput };
+      const run = await api<WorkflowRun>(`/api/projects/${overview.project.id}/workflows/${selectedWorkflow}/run`, { method: "POST", body: JSON.stringify(body) });
+      await refreshOverview(overview.project.id);
+      setWorkflowStatus(`${run.module_id} created an advisory draft.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not run workflow");
+      setWorkflowStatus("Workflow run failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function acceptWorkflow(run: WorkflowRun) {
+    if (!overview) return;
+    setBusy(true);
+    setError("");
+    try {
+      const next = await api<ProjectOverview>(`/api/projects/${overview.project.id}/workflows/runs/${run.id}/accept`, { method: "POST", body: JSON.stringify({}) });
+      setOverview(next);
+      await refreshProjects(overview.project.id);
+      setWorkflowStatus(`${run.module_id} accepted into continuity records.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not accept workflow");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rejectWorkflow(run: WorkflowRun) {
+    if (!overview) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api<WorkflowRun>(`/api/projects/${overview.project.id}/workflows/runs/${run.id}/reject`, { method: "POST", body: JSON.stringify({ reason: "Rejected from dashboard review." }) });
+      await refreshOverview(overview.project.id);
+      setWorkflowStatus(`${run.module_id} rejected and preserved for provenance.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reject workflow");
     } finally {
       setBusy(false);
     }
@@ -319,24 +397,25 @@ function App() {
             </div>
           </div>
           <p className="folderStatus">{scanStatus}</p>
+          {scanWarnings.length > 0 && (
+            <div className="scanWarnings">
+              {scanWarnings.map((warning) => <p key={`${warning.code}-${warning.message}`} className={warning.severity === "warning" ? "scanWarning strong" : "scanWarning"}>{warning.message}</p>)}
+            </div>
+          )}
           {candidates.length > 0 && (
             <div className="candidateGrid">
-              {candidates.map((candidate) => (
-                <article key={candidate.id} className="candidateCard">
-                  <div>
-                    <strong>{candidate.name}</strong>
-                    <span>{Math.round(candidate.confidence * 100)}% confidence</span>
-                  </div>
-                  <p>{candidate.readme_preview || "No README preview available."}</p>
-                  <div className="draftCounts">
-                    <span>{candidate.detected_stack.join(", ") || "Unknown stack"}</span>
-                    <span>{candidate.detected_checks.length} checks</span>
-                    <span>{candidate.evidence_files.length} evidence files</span>
-                  </div>
-                  <button onClick={() => trackCandidate(candidate)} disabled={busy}>Track project</button>
-                </article>
-              ))}
+              {candidates.map((candidate) => <CandidateCard
+                key={candidate.id}
+                candidate={candidate}
+                expanded={expandedCandidates.has(candidate.id)}
+                onToggle={() => toggleCandidatePreview(candidate.id)}
+                onTrack={() => trackCandidate(candidate)}
+                busy={busy}
+              />)}
             </div>
+          )}
+          {!busy && !candidates.length && scanWarnings.some((warning) => warning.code === "no-candidates") && (
+            <p className="muted">Try choosing the repository root, a parent folder that contains project folders, or a README/config file with Add File.</p>
           )}
         </section>
         {!overview ? (
@@ -384,6 +463,15 @@ function App() {
               folderPath={folderPath}
               setFolderPath={setFolderPath}
               folderSelectionStatus={folderSelectionStatus}
+              workflowModules={workflowModules}
+              selectedWorkflow={selectedWorkflow}
+              setSelectedWorkflow={setSelectedWorkflow}
+              workflowInput={workflowInput}
+              setWorkflowInput={setWorkflowInput}
+              workflowStatus={workflowStatus}
+              onRunWorkflow={runWorkflow}
+              onAcceptWorkflow={acceptWorkflow}
+              onRejectWorkflow={rejectWorkflow}
               busy={busy}
             />
           </>
@@ -417,6 +505,42 @@ function DraftCard({ draft, onAccept, busy }: { draft: ExtractionDraft; onAccept
   );
 }
 
+function CandidateCard({
+  candidate,
+  expanded,
+  onToggle,
+  onTrack,
+  busy
+}: {
+  candidate: ProjectCandidate;
+  expanded: boolean;
+  onToggle: () => void;
+  onTrack: () => void;
+  busy: boolean;
+}) {
+  const preview = candidate.readme_preview || "No README preview available.";
+  const canExpand = preview.length > 220;
+  return (
+    <article className="candidateCard">
+      <div>
+        <strong>{candidate.name}</strong>
+        <span>{Math.round(candidate.confidence * 100)}% confidence</span>
+      </div>
+      <div className="reasonPills">
+        {(candidate.detection_reasons.length ? candidate.detection_reasons : ["Low evidence"]).map((reason) => <span key={reason}>{reason}</span>)}
+      </div>
+      <p className={expanded ? "candidatePreview expanded" : "candidatePreview"}>{preview}</p>
+      {canExpand && <button className="textButton" onClick={onToggle}>{expanded ? "Show less" : "View more"}</button>}
+      <div className="draftCounts">
+        <span>{candidate.detected_stack.join(", ") || "Unknown stack"}</span>
+        <span>{candidate.detected_checks.length} checks</span>
+        <span>{candidate.evidence_files.length} evidence files</span>
+      </div>
+      <button onClick={onTrack} disabled={busy}>Track project</button>
+    </article>
+  );
+}
+
 function TabContent({
   tab,
   overview,
@@ -426,6 +550,15 @@ function TabContent({
   folderPath,
   setFolderPath,
   folderSelectionStatus,
+  workflowModules,
+  selectedWorkflow,
+  setSelectedWorkflow,
+  workflowInput,
+  setWorkflowInput,
+  workflowStatus,
+  onRunWorkflow,
+  onAcceptWorkflow,
+  onRejectWorkflow,
   busy
 }: {
   tab: string;
@@ -436,6 +569,15 @@ function TabContent({
   folderPath: string;
   setFolderPath: (value: string) => void;
   folderSelectionStatus: string;
+  workflowModules: WorkflowModuleDefinition[];
+  selectedWorkflow: string;
+  setSelectedWorkflow: (value: string) => void;
+  workflowInput: string;
+  setWorkflowInput: (value: string) => void;
+  workflowStatus: string;
+  onRunWorkflow: () => void;
+  onAcceptWorkflow: (run: WorkflowRun) => void;
+  onRejectWorkflow: (run: WorkflowRun) => void;
   busy: boolean;
 }) {
   if (tab === "Overview") {
@@ -466,6 +608,53 @@ function TabContent({
       <RecordList items={overview.checks.map((item) => ({ title: item.command, meta: `${item.check_type} · confidence ${Math.round(item.confidence * 100)}%`, body: `Source: ${item.source}` }))} />
       <h4>Project Signals</h4>
       <RecordList items={overview.signals.map((item) => ({ title: item.label, meta: `${item.signal_type} · severity ${item.severity}`, body: item.description }))} />
+    </Panel>;
+  }
+  if (tab === "Workflows") {
+    const selected = workflowModules.find((module) => module.id === selectedWorkflow);
+    return <Panel title="Continuity-Aware Workflows">
+      <p className="muted">These are shared workflow modules on top of project memory. They create advisory outputs only; accepting them records continuity events, branches, and drift warnings.</p>
+      <div className="workflowGrid">
+        {workflowModules.map((module) => (
+          <button className={module.id === selectedWorkflow ? "workflowCard selected" : "workflowCard"} key={module.id} onClick={() => setSelectedWorkflow(module.id)}>
+            <strong>{module.name}</strong>
+            <span>{module.output_type} · {module.risk_level} risk</span>
+            <small>{module.purpose}</small>
+          </button>
+        ))}
+      </div>
+      <section className="workflowRunner">
+        <div>
+          <h4>{selected?.name ?? "Workflow"}</h4>
+          <p className="muted">Required context: {selected?.required_context.join(", ") ?? "context"}. Review required: {selected?.review_required ? "yes" : "yes"}.</p>
+        </div>
+        <textarea
+          value={workflowInput}
+          onChange={(event) => setWorkflowInput(event.target.value)}
+          placeholder={selectedWorkflow === "refactor-tracker" ? "Optional note. Refactor Tracker uses tracked folder snapshots." : "Paste a diff, patch, change summary, or local context..."}
+        />
+        <div className="intakeActions">
+          <span>{workflowStatus}</span>
+          <button onClick={onRunWorkflow} disabled={busy || (selectedWorkflow !== "refactor-tracker" && !workflowInput.trim())}>Run workflow</button>
+        </div>
+      </section>
+      <h4>Workflow Runs</h4>
+      <div className="recordList">
+        {overview.workflowRuns.length ? overview.workflowRuns.map((run) => (
+          <article key={run.id}>
+            <div><strong>{run.module_id}</strong><span>{run.status} · {new Date(run.created_at).toLocaleString()}</span></div>
+            <p>{run.output.summary}</p>
+            <List items={run.output.findings.map((finding) => `${finding.title}: ${finding.recommendation}`)} empty="No findings." />
+            {run.output.proposed_patches.length > 0 && <pre className="patchPreview">{run.output.proposed_patches.join("\n\n")}</pre>}
+            {run.status === "draft" && (
+              <div className="workflowActions">
+                <button onClick={() => onAcceptWorkflow(run)} disabled={busy}>Accept continuity records</button>
+                <button className="secondaryButton" onClick={() => onRejectWorkflow(run)} disabled={busy}>Reject</button>
+              </div>
+            )}
+          </article>
+        )) : <p className="muted">No workflow runs yet.</p>}
+      </div>
     </Panel>;
   }
   if (tab === "Timeline / History") return <Panel title="Timeline / History"><RecordList items={overview.events.map((event) => ({ title: event.summary, meta: event.timestamp, body: event.source }))} /></Panel>;

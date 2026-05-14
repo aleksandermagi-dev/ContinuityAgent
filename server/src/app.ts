@@ -4,18 +4,24 @@ import { z } from "zod";
 import { createAiAdapter } from "./ai";
 import {
   acceptExtraction,
+  acceptWorkflowRun,
   createDb,
   createProject,
   getOverview,
   getProject,
   getProjectChecks,
+  id,
   insertEvent,
   insertExtractionDraft,
   insertFolderSnapshot,
   insertHealthReport,
+  insertWorkflowRun,
+  listWorkflowRuns,
   listProjects,
+  now,
   replaceProjectChecks,
   replaceProjectSignals,
+  rejectWorkflowRun,
   updateProjectSummary,
   type AppDb
 } from "./db";
@@ -32,12 +38,13 @@ import {
   detectChecks,
   detectSignals,
   fileSnapshotToProjectFiles,
-  scanBrowserProjects,
-  scanLocalProjects,
+  scanBrowserProjectDiscovery,
+  scanLocalProjectDiscovery,
   summarizeFileSnapshot
 } from "./discovery";
 import { toMarkdown } from "./export";
 import { createSnapshotFromBrowserSelection, createSnapshotFromFiles, createSnapshotFromLocalPath, snapshotToUpdateNote } from "./folders";
+import { getWorkflowModule, getWorkflowModules, runWorkflowModule, workflowInputSummary } from "./workflows";
 
 export function createApp(db: AppDb = createDb()) {
   const app = express();
@@ -52,6 +59,10 @@ export function createApp(db: AppDb = createDb()) {
 
   app.get("/api/projects", (_req, res) => {
     res.json(listProjects(db));
+  });
+
+  app.get("/api/workflows/modules", (_req, res) => {
+    res.json(getWorkflowModules());
   });
 
   app.post("/api/projects", (req, res) => {
@@ -183,6 +194,53 @@ export function createApp(db: AppDb = createDb()) {
     }
   });
 
+  app.post("/api/projects/:id/workflows/:moduleId/run", (req, res, next) => {
+    try {
+      const input = z.object({
+        patch: z.string().optional(),
+        changeNotes: z.string().optional(),
+        context: z.string().optional()
+      }).parse(req.body ?? {});
+      const overview = getOverview(db, req.params.id);
+      if (!overview) return res.status(404).json({ error: "Project not found" });
+      const module = getWorkflowModule(req.params.moduleId);
+      if (!module) return res.status(404).json({ error: "Workflow module not found" });
+      const timestamp = now();
+      const run = insertWorkflowRun(db, {
+        id: id(),
+        project_id: overview.project.id,
+        module_id: module.id,
+        status: "draft",
+        input_summary: workflowInputSummary(module.id, input),
+        output: runWorkflowModule(module.id, overview, input),
+        review_required: module.review_required ?? true,
+        created_at: timestamp,
+        updated_at: timestamp
+      });
+      res.status(201).json(run);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get("/api/projects/:id/workflows/runs", (req, res) => {
+    if (!getProject(db, req.params.id)) return res.status(404).json({ error: "Project not found" });
+    res.json(listWorkflowRuns(db, req.params.id));
+  });
+
+  app.post("/api/projects/:id/workflows/runs/:runId/accept", (req, res) => {
+    const overview = acceptWorkflowRun(db, req.params.id, req.params.runId);
+    if (!overview) return res.status(404).json({ error: "Draft workflow run not found" });
+    res.json(overview);
+  });
+
+  app.post("/api/projects/:id/workflows/runs/:runId/reject", (req, res) => {
+    const input = z.object({ reason: z.string().optional() }).parse(req.body ?? {});
+    const run = rejectWorkflowRun(db, req.params.id, req.params.runId, input.reason ?? "");
+    if (!run) return res.status(404).json({ error: "Draft workflow run not found" });
+    res.json(run);
+  });
+
   app.post("/api/projects/:id/folder-snapshots", async (req, res, next) => {
     try {
       const input = z.object({
@@ -232,10 +290,10 @@ export function createApp(db: AppDb = createDb()) {
         })).optional()
       }).parse(req.body);
       if (!input.rootPath && !input.files?.length) return res.status(400).json({ error: "Provide a rootPath or selected folder files." });
-      const candidates = input.rootPath
-        ? scanLocalProjects(input.rootPath)
-        : scanBrowserProjects(input.folderName ?? "Selected folder", input.files ?? []);
-      res.json({ candidates });
+      const result = input.rootPath
+        ? scanLocalProjectDiscovery(input.rootPath)
+        : scanBrowserProjectDiscovery(input.folderName ?? "Selected folder", input.files ?? []);
+      res.json(result);
     } catch (error) {
       next(error);
     }
@@ -248,6 +306,7 @@ export function createApp(db: AppDb = createDb()) {
           name: z.string(),
           path: z.string(),
           evidence_files: z.array(z.string()),
+          detection_reasons: z.array(z.string()).optional(),
           readme_preview: z.string(),
           detected_stack: z.array(z.string()),
           detected_checks: z.array(z.object({

@@ -9,6 +9,7 @@ Project Continuity Agent tracks not just what changed, but why it changed: decis
 - A standalone local web app and API service.
 - A SQLite-backed memory/coherence layer for complex projects.
 - A project discovery tool that can scan folders, detect checks, and create reviewable project memory drafts.
+- A continuity-aware workflow substrate for developer workflows like PR review, documentation review, and refactor tracking.
 - A universal helper for software builds, research, writing/worldbuilding, startups, and other evolving systems.
 - A future-friendly bridge for assistants such as Azari to request compact, sourced project context.
 
@@ -18,6 +19,7 @@ Project Continuity Agent tracks not just what changed, but why it changed: decis
 - Not a generic chatbot.
 - Not only a task manager.
 - Not a tool that silently mutates project files.
+- Not ten separate agents with duplicated memory.
 - Not a command runner for discovered checks yet; it recommends checks but does not execute them.
 
 ## Setup
@@ -70,6 +72,20 @@ The smoke check verifies the API and frontend URLs respond.
 5. Generate a Project Health report.
 6. Open Reports and export Markdown, JSON, or continuity packets.
 
+Project discovery shows why each candidate was found and warns when generated/cache folders were skipped or when confidence is low. Temporary screenshot folders such as `pics/` are local debugging evidence only and are ignored by git.
+
+## Workflow Modules
+
+ContinuityAgent includes lightweight workflow modules that run on top of the same continuity spine: shared project state, provenance, drift tracking, drafts, and human approval.
+
+The first modules are:
+
+- `PR Reviewer`: reviews supplied patch/diff text for bugs, missing tests, security concerns, and maintainability risks.
+- `Doc Writer`: checks whether code or API changes need README/docs/docstring updates and drafts documentation notes.
+- `Refactor Tracker`: reviews tracked folder snapshots for TODO/FIXME markers, large files, duplicate-looking patterns, and maintainability risks.
+
+These are not separate agents. They do not maintain their own memory, call external services, run discovered commands, or mutate project files. Each run produces an advisory workflow draft. Accepting the draft records continuity events, unresolved branches, and drift warnings where appropriate; rejecting it preserves the decision for provenance.
+
 ## Azari Continuity Trial
 
 Azari is used only as a representative stress-test pattern. The fixture at `fixtures/azari-continuity-trial` is synthetic and contains no private Azari code or data.
@@ -94,6 +110,8 @@ High-value endpoints:
 - `POST /api/project-discovery/track`
 - `GET /api/projects/:id/context-packet?budget=small|medium|large`
 - `POST /api/projects/:id/agent-updates`
+- `GET /api/workflows/modules`
+- `POST /api/projects/:id/workflows/:moduleId/run`
 - `GET /api/benchmarks/azari-continuity-trial`
 
 ## Optional AI Provider

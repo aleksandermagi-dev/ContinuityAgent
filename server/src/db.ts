@@ -17,7 +17,8 @@ import type {
   ProjectOverview,
   ProjectSignal,
   ProjectStatus,
-  TaskRecord
+  TaskRecord,
+  WorkflowRun
 } from "../../shared/types";
 
 const json = {
@@ -209,6 +210,21 @@ function migrate(db: Database.Database) {
       source TEXT NOT NULL,
       timestamp TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS workflow_runs (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      module_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      input_summary TEXT NOT NULL,
+      output TEXT NOT NULL,
+      review_required INTEGER NOT NULL DEFAULT 1,
+      rejection_reason TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      accepted_at TEXT,
+      rejected_at TEXT
+    );
   `);
 }
 
@@ -321,6 +337,7 @@ export function getOverview(db: AppDb, projectId: string): ProjectOverview | und
   const folderSnapshots = mapRows(db, "SELECT * FROM folder_snapshots WHERE project_id = ? ORDER BY timestamp DESC LIMIT 10", projectId, toFolderSnapshot);
   const checks = mapRows(db, "SELECT * FROM project_checks WHERE project_id = ? ORDER BY check_type, confidence DESC, command", projectId, toProjectCheck);
   const signals = mapRows(db, "SELECT * FROM project_signals WHERE project_id = ? ORDER BY severity DESC, timestamp DESC", projectId, toProjectSignal);
+  const workflowRuns = mapRows(db, "SELECT * FROM workflow_runs WHERE project_id = ? ORDER BY created_at DESC", projectId, toWorkflowRun);
   return {
     project,
     events,
@@ -333,7 +350,8 @@ export function getOverview(db: AppDb, projectId: string): ProjectOverview | und
     pendingDrafts,
     folderSnapshots,
     checks,
-    signals
+    signals,
+    workflowRuns
   };
 }
 
@@ -380,6 +398,83 @@ export function replaceProjectSignals(db: AppDb, projectId: string, signals: Omi
 
 export function getProjectChecks(db: AppDb, projectId: string): ProjectCheck[] {
   return mapRows(db, "SELECT * FROM project_checks WHERE project_id = ? ORDER BY check_type, confidence DESC, command", projectId, toProjectCheck);
+}
+
+export function insertWorkflowRun(db: AppDb, run: WorkflowRun): WorkflowRun {
+  db.prepare(`
+    INSERT INTO workflow_runs (id, project_id, module_id, status, input_summary, output, review_required, rejection_reason, created_at, updated_at, accepted_at, rejected_at)
+    VALUES (@id, @project_id, @module_id, @status, @input_summary, @output, @review_required, @rejection_reason, @created_at, @updated_at, @accepted_at, @rejected_at)
+  `).run({
+    ...run,
+    output: json.stringify(run.output),
+    review_required: run.review_required ? 1 : 0,
+    rejection_reason: run.rejection_reason ?? null,
+    accepted_at: run.accepted_at ?? null,
+    rejected_at: run.rejected_at ?? null
+  });
+  db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(run.updated_at, run.project_id);
+  return run;
+}
+
+export function listWorkflowRuns(db: AppDb, projectId: string): WorkflowRun[] {
+  return mapRows(db, "SELECT * FROM workflow_runs WHERE project_id = ? ORDER BY created_at DESC", projectId, toWorkflowRun);
+}
+
+export function getWorkflowRun(db: AppDb, projectId: string, runId: string): WorkflowRun | undefined {
+  const row = db.prepare("SELECT * FROM workflow_runs WHERE project_id = ? AND id = ?").get(projectId, runId);
+  return row ? toWorkflowRun(row as Record<string, unknown>) : undefined;
+}
+
+export function acceptWorkflowRun(db: AppDb, projectId: string, runId: string): ProjectOverview | undefined {
+  const run = getWorkflowRun(db, projectId, runId);
+  if (!run || run.status !== "draft") return undefined;
+  const timestamp = now();
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE workflow_runs SET status = 'accepted', accepted_at = ?, updated_at = ? WHERE id = ?").run(timestamp, timestamp, run.id);
+    const event = insertEvent(db, projectId, run.output.continuity_updates.event_summary, `workflow:${run.module_id}`);
+    const branchStmt = db.prepare("INSERT INTO branch_records VALUES (@id, @project_id, @branch_name, @description, @status, @reason_created, @current_summary, @linked_decisions, @timestamp, @provenance_event_id, @provenance_extraction_run_id)");
+    for (const branchName of run.output.continuity_updates.branch_suggestions) {
+      branchStmt.run({
+        id: id(),
+        project_id: projectId,
+        branch_name: branchName,
+        description: `Suggested by ${run.module_id}.`,
+        status: "unresolved",
+        reason_created: "Accepted advisory workflow output.",
+        current_summary: branchName,
+        linked_decisions: json.stringify([]),
+        timestamp,
+        provenance_event_id: event.id,
+        provenance_extraction_run_id: null
+      });
+    }
+    const driftStmt = db.prepare("INSERT INTO drift_warnings VALUES (@id, @project_id, @drift_type, @description, @severity, @evidence, @suggested_review, @timestamp, @provenance_event_id, @provenance_extraction_run_id)");
+    for (const warning of run.output.continuity_updates.drift_warnings) {
+      driftStmt.run({
+        id: id(),
+        project_id: projectId,
+        drift_type: warning.drift_type,
+        description: warning.description,
+        severity: warning.severity,
+        evidence: json.stringify(warning.evidence),
+        suggested_review: warning.suggested_review,
+        timestamp,
+        provenance_event_id: event.id,
+        provenance_extraction_run_id: null
+      });
+    }
+  });
+  tx();
+  return getOverview(db, projectId);
+}
+
+export function rejectWorkflowRun(db: AppDb, projectId: string, runId: string, reason = ""): WorkflowRun | undefined {
+  const run = getWorkflowRun(db, projectId, runId);
+  if (!run || run.status !== "draft") return undefined;
+  const timestamp = now();
+  db.prepare("UPDATE workflow_runs SET status = 'rejected', rejection_reason = ?, rejected_at = ?, updated_at = ? WHERE id = ?").run(reason, timestamp, timestamp, run.id);
+  db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(timestamp, projectId);
+  return getWorkflowRun(db, projectId, runId);
 }
 
 export function acceptExtraction(db: AppDb, projectId: string, runId: string, sections?: string[]) {
@@ -623,5 +718,28 @@ function toProjectSignal(row: Record<string, unknown>): ProjectSignal {
     severity: Number(row.severity),
     source: String(row.source),
     timestamp: String(row.timestamp)
+  };
+}
+
+function toWorkflowRun(row: Record<string, unknown>): WorkflowRun {
+  return {
+    id: String(row.id),
+    project_id: String(row.project_id),
+    module_id: String(row.module_id),
+    status: String(row.status) as WorkflowRun["status"],
+    input_summary: String(row.input_summary),
+    output: json.parse(String(row.output), {
+      summary: "",
+      findings: [],
+      draft_comments: [],
+      proposed_patches: [],
+      continuity_updates: { event_summary: "", branch_suggestions: [], drift_warnings: [] }
+    }),
+    review_required: Boolean(Number(row.review_required ?? 1)),
+    rejection_reason: row.rejection_reason ? String(row.rejection_reason) : undefined,
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+    accepted_at: row.accepted_at ? String(row.accepted_at) : undefined,
+    rejected_at: row.rejected_at ? String(row.rejected_at) : undefined
   };
 }

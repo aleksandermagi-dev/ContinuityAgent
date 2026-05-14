@@ -109,6 +109,9 @@ describe("project continuity api", () => {
 
     const scan = await request(app).post("/api/project-discovery/scan").send({ rootPath: root }).expect(200);
     expect(scan.body.candidates.length).toBeGreaterThan(0);
+    expect(scan.body.warnings).toBeDefined();
+    expect(scan.body.scanned_at).toBeDefined();
+    expect(scan.body.candidates[0].detection_reasons).toContain("README found");
     expect(scan.body.candidates[0].detected_checks.some((check: { command: string }) => check.command === "npm run test")).toBe(true);
 
     const tracked = await request(app).post("/api/project-discovery/track").send({ candidate: scan.body.candidates[0] }).expect(201);
@@ -151,6 +154,48 @@ describe("project continuity api", () => {
     const overview = await request(app).get(`/api/projects/${projectId}/overview`).expect(200);
     expect(overview.body.pendingDrafts.length).toBe(1);
     expect(overview.body.decisions).toHaveLength(1);
+  });
+
+  it("runs workflow modules and accepts or rejects advisory outputs", async () => {
+    const app = testApp();
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pca-workflows-"));
+    tempRoots.push(projectRoot);
+    fs.writeFileSync(path.join(projectRoot, "README.md"), "Goal: workflow demo.\nTODO document workflow review.");
+    fs.writeFileSync(path.join(projectRoot, "index.ts"), "export function run() { return true; }\n".repeat(800));
+    const created = await request(app).post("/api/projects").send({ name: "Workflow Demo" }).expect(201);
+    const projectId = created.body.id;
+    await request(app).post(`/api/projects/${projectId}/folder-snapshots`).send({ folderPath: projectRoot }).expect(201);
+
+    const modules = await request(app).get("/api/workflows/modules").expect(200);
+    expect(modules.body.map((module: { id: string }) => module.id)).toEqual(["pr-reviewer", "doc-writer", "refactor-tracker"]);
+    expect(modules.body.every((module: { review_required: boolean }) => module.review_required)).toBe(true);
+
+    const missing = await request(app).post(`/api/projects/${projectId}/workflows/pr-reviewer/run`).send({}).expect(400);
+    expect(missing.body.error).toContain("requires patch");
+
+    const prRun = await request(app)
+      .post(`/api/projects/${projectId}/workflows/pr-reviewer/run`)
+      .send({ patch: "+ const html = input.innerHTML;\n+ console.log(html);" })
+      .expect(201);
+    expect(prRun.body.status).toBe("draft");
+    expect(prRun.body.review_required).toBe(true);
+    expect(prRun.body.output.findings.some((finding: { category: string }) => finding.category === "security")).toBe(true);
+
+    const docRun = await request(app)
+      .post(`/api/projects/${projectId}/workflows/doc-writer/run`)
+      .send({ changeNotes: "Added POST /api/projects/:id/workflows/:moduleId/run for workflow execution." })
+      .expect(201);
+    await request(app).post(`/api/projects/${projectId}/workflows/runs/${docRun.body.id}/reject`).send({ reason: "Will document later." }).expect(200);
+
+    const refactorRun = await request(app).post(`/api/projects/${projectId}/workflows/refactor-tracker/run`).send({}).expect(201);
+    const accepted = await request(app).post(`/api/projects/${projectId}/workflows/runs/${refactorRun.body.id}/accept`).send({}).expect(200);
+    expect(accepted.body.events.some((event: { source: string }) => event.source === "workflow:refactor-tracker")).toBe(true);
+    expect(accepted.body.branches.length).toBeGreaterThan(0);
+    expect(accepted.body.driftWarnings.length).toBeGreaterThan(0);
+
+    const runs = await request(app).get(`/api/projects/${projectId}/workflows/runs`).expect(200);
+    expect(runs.body.some((run: { status: string }) => run.status === "rejected")).toBe(true);
+    expect(runs.body.some((run: { status: string }) => run.status === "accepted")).toBe(true);
   });
 
   it("exposes the Azari Continuity Trial benchmark profile", async () => {
