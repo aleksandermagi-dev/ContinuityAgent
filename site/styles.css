@@ -179,7 +179,9 @@ article strong {
 }
 
 .steps,
-.audience {
+.audience,
+.afterPurchase,
+.limitations {
   max-width: 880px;
 }
 
@@ -195,6 +197,31 @@ article strong {
 }
 
 .audience ul {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0;
+  padding: 1.2rem 1.2rem 1.2rem 2.4rem;
+}
+
+.timeline {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.timeline article span {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 50%;
+  color: white;
+  display: inline-flex;
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.limitations ul {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -221,7 +248,8 @@ footer {
   .proof,
   .product,
   .offerGrid,
-  .audience {
+  .audience,
+  .timeline {
     grid-template-columns: 1fr;
   }
 }

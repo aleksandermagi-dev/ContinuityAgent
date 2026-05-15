@@ -53,6 +53,8 @@ src-tauri\target\release\continuity-layer.exe
   - `EARLY_ACCESS_CHECKOUT_URL`
   - `SETUP_SERVICE_CHECKOUT_URL`
   - `FEEDBACK_CONTACT_URL`
+  - `Known limitations`
+  - `What happens after purchase`
 - Replace placeholders before sharing publicly.
 - Confirm demo copy only references `fixtures/azari-continuity-trial`.
 

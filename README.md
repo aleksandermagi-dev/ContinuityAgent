@@ -37,6 +37,8 @@ Buyer-facing launch material:
 - [Static launch page](site/index.html)
 - [Launch notes](docs/LAUNCH.md)
 - [Agent setup](docs/AGENT_SETUP.md)
+- [Demo script](docs/DEMO_SCRIPT.md)
+- [Outreach plan](docs/OUTREACH.md)
 - [Release checklist](docs/RELEASE_CHECKLIST.md)
 
 Payment is handled through external checkout placeholders for now. Lemon Squeezy is the recommended first checkout because it keeps tax/compliance simple for paid validation. There is no in-app billing, license enforcement, hosted account system, or automatic patch application in this release.
