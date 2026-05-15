@@ -393,7 +393,13 @@ function App() {
           <div>
             <p className="eyebrow">Project onboarding</p>
             <h3>Add a project folder or single file</h3>
-            <p className="muted">Add Project Folder is the normal tracking flow. Add Single File imports one README/doc/config/source file. Manual path scan remains available for pasted local paths.</p>
+            <p className="muted">Build shared project memory for humans and AI agents: scan a project, track decisions and drift, then hand assistants compact continuity packets instead of re-explaining the whole project.</p>
+          </div>
+          <div className="launchTrust">
+            <span>Local-first SQLite memory</span>
+            <span>Agent updates create drafts</span>
+            <span>Detected checks are not auto-run</span>
+            <span>No silent file mutation</span>
           </div>
           <div className="onboardingActions">
             {isTauriRuntime() ? (
@@ -431,6 +437,17 @@ function App() {
             </div>
           </div>
           <p className="folderStatus">{scanStatus}</p>
+          <section className="agentAccessCallout">
+            <div>
+              <p className="eyebrow">Agent access</p>
+              <h4>Give Codex, Claude, Cursor-style tools, or local agents compact project context.</h4>
+              <p className="muted">Use continuity packets, relevant decisions, detected checks, and draft-only agent updates through the local API, CLI, or MCP server.</p>
+            </div>
+            <div className="agentCommands">
+              <code>npm run continuity -- packet --project "Project name" --budget small</code>
+              <code>npm run mcp</code>
+            </div>
+          </section>
           {scanWarnings.length > 0 && (
             <div className="scanWarnings">
               {scanWarnings.map((warning) => <p key={`${warning.code}-${warning.message}`} className={warning.severity === "warning" ? "scanWarning strong" : "scanWarning"}>{warning.message}</p>)}

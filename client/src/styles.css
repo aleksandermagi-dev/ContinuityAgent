@@ -412,14 +412,16 @@ h2 {
 }
 
 .reasonPills,
-.scanWarnings {
+.scanWarnings,
+.launchTrust {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
 }
 
 .reasonPills span,
-.scanWarning {
+.scanWarning,
+.launchTrust span {
   background: #f3f0e7;
   border: 1px solid #ddd7c9;
   border-radius: 999px;
@@ -427,6 +429,36 @@ h2 {
   font-size: 0.82rem;
   margin: 0;
   padding: 0.3rem 0.55rem;
+}
+
+.agentAccessCallout {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+  padding: 1rem;
+}
+
+.agentAccessCallout h4 {
+  margin-bottom: 0.45rem;
+}
+
+.agentCommands {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.agentCommands code {
+  background: #fffefa;
+  border: 1px solid #d8cef8;
+  border-radius: 6px;
+  color: #2d225c;
+  overflow-wrap: anywhere;
+  padding: 0.55rem;
 }
 
 .scanWarning.strong {
@@ -501,5 +533,9 @@ li {
   .metricStrip,
   .scoreGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agentAccessCallout {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,0 +1,227 @@
+:root {
+  --ink: #17151f;
+  --muted: #625d70;
+  --paper: #fffefa;
+  --soft: #f4f0ff;
+  --accent: #6f4bd8;
+  --accent-dark: #4c2f9b;
+  --line: #ded6f7;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: #faf8f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hero {
+  background: #efe8ff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1400' height='900' viewBox='0 0 1400 900'%3E%3Crect width='1400' height='900' fill='%23efe8ff'/%3E%3Cg opacity='0.85'%3E%3Crect x='740' y='120' width='460' height='310' rx='18' fill='%23fffefa' stroke='%236f4bd8' stroke-width='3'/%3E%3Crect x='780' y='170' width='260' height='18' rx='9' fill='%236f4bd8'/%3E%3Crect x='780' y='218' width='360' height='14' rx='7' fill='%23d7ccff'/%3E%3Crect x='780' y='255' width='310' height='14' rx='7' fill='%23d7ccff'/%3E%3Crect x='780' y='292' width='340' height='14' rx='7' fill='%23d7ccff'/%3E%3Crect x='820' y='500' width='380' height='180' rx='18' fill='%23fffefa' stroke='%236f4bd8' stroke-width='3'/%3E%3Crect x='860' y='548' width='240' height='16' rx='8' fill='%236f4bd8'/%3E%3Crect x='860' y='592' width='280' height='12' rx='6' fill='%23d7ccff'/%3E%3Crect x='860' y='626' width='220' height='12' rx='6' fill='%23d7ccff'/%3E%3Cpath d='M720 285 C620 300 600 500 800 590' fill='none' stroke='%234c2f9b' stroke-width='5' stroke-linecap='round' stroke-dasharray='12 18'/%3E%3C/g%3E%3C/svg%3E") center/cover;
+  min-height: 88vh;
+  padding: 1.2rem clamp(1rem, 5vw, 4rem) 5rem;
+}
+
+nav,
+footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+nav div,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+nav a,
+.actions a,
+.pricing a,
+footer a {
+  border: 1px solid rgba(76, 47, 155, 0.24);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  background: rgba(255, 254, 250, 0.72);
+}
+
+.primary,
+.actions .primary,
+.pricing .primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.heroCopy {
+  max-width: 720px;
+  padding-top: min(18vh, 8rem);
+}
+
+.eyebrow {
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin: 0 0 0.6rem;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: clamp(3rem, 8vw, 6.8rem);
+  line-height: 0.92;
+  margin-bottom: 1.2rem;
+  max-width: 760px;
+}
+
+h2 {
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 1;
+}
+
+.lede {
+  color: #342b4d;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1.5;
+  max-width: 670px;
+}
+
+.note,
+.muted {
+  color: var(--muted);
+}
+
+main {
+  display: grid;
+  gap: 4rem;
+  padding: 4rem clamp(1rem, 5vw, 4rem);
+}
+
+.proof,
+.offerGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.offerGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1.2rem;
+}
+
+article,
+.mock,
+.pricing {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1.2rem;
+}
+
+article span {
+  color: var(--accent-dark);
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 800;
+  margin-bottom: 0.45rem;
+}
+
+article strong {
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 0.55rem;
+}
+
+.product {
+  align-items: center;
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1fr);
+}
+
+.mock {
+  box-shadow: 0 24px 80px rgba(54, 35, 117, 0.18);
+}
+
+.mockTop {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1.2rem;
+}
+
+.mockTop span {
+  background: var(--accent);
+  border-radius: 50%;
+  height: 0.72rem;
+  width: 0.72rem;
+}
+
+.mock li,
+.steps li {
+  margin-bottom: 0.7rem;
+}
+
+.steps,
+.audience {
+  max-width: 880px;
+}
+
+.pricing,
+.trust {
+  max-width: 920px;
+}
+
+.audience {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1fr);
+}
+
+.audience ul {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0;
+  padding: 1.2rem 1.2rem 1.2rem 2.4rem;
+}
+
+footer {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  margin: 0 clamp(1rem, 5vw, 4rem);
+  padding: 1.5rem 0;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    min-height: auto;
+  }
+
+  .heroCopy {
+    padding-top: 5rem;
+  }
+
+  .proof,
+  .product,
+  .offerGrid,
+  .audience {
+    grid-template-columns: 1fr;
+  }
+}

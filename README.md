@@ -22,6 +22,25 @@ Continuity Layer tracks not just what changed, but why it changed: decisions, br
 - Not ten separate agents with duplicated memory.
 - Not a command runner for discovered checks yet; it recommends checks but does not execute them.
 
+## Early Access
+
+Continuity Layer is being prepared for **$19 paid early access** for AI builders, plus an optional **$99 setup session** for buyers who want help connecting a real project and AI workflow.
+
+Launch line:
+
+```text
+Stop re-explaining your project to AI.
+```
+
+Buyer-facing launch material:
+
+- [Static launch page](site/index.html)
+- [Launch notes](docs/LAUNCH.md)
+- [Agent setup](docs/AGENT_SETUP.md)
+- [Release checklist](docs/RELEASE_CHECKLIST.md)
+
+Payment is handled through external checkout placeholders for now. Lemon Squeezy is the recommended first checkout because it keeps tax/compliance simple for paid validation. There is no in-app billing, license enforcement, hosted account system, or automatic patch application in this release.
+
 ## Setup
 
 ```bash
@@ -92,7 +111,7 @@ Project discovery shows why each candidate was found and warns when generated/ca
 
 ## Workflow Modules
 
-ContinuityAgent includes lightweight workflow modules that run on top of the same continuity spine: shared project state, provenance, drift tracking, drafts, and human approval.
+Continuity Layer includes lightweight workflow modules that run on top of the same continuity spine: shared project state, provenance, drift tracking, drafts, and human approval.
 
 The first modules are:
 

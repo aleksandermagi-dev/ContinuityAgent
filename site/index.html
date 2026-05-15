@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Continuity Layer - AI Project Memory</title>
+    <meta name="description" content="Continuity Layer is shared project memory for humans and AI agents. Stop re-explaining your project to AI." />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <nav>
+        <strong>Continuity Layer</strong>
+        <div>
+          <a href="../docs/AGENT_SETUP.md">Agent setup</a>
+          <a href="https://github.com/aleksandermagi-dev/ContinuityAgent">GitHub</a>
+        </div>
+      </nav>
+      <section class="heroCopy">
+        <p class="eyebrow">Local-first project memory for AI builders</p>
+        <h1>Stop re-explaining your project to AI.</h1>
+        <p class="lede">Continuity Layer is shared project memory for humans and AI agents. It tracks what changed, why it changed, what is unresolved, and what an assistant should know before helping.</p>
+        <div class="actions">
+          <a class="primary" id="checkoutLink" href="EARLY_ACCESS_CHECKOUT_URL">Get early access - $19</a>
+          <a href="https://github.com/aleksandermagi-dev/ContinuityAgent">View GitHub</a>
+          <a href="../docs/AGENT_SETUP.md">Read agent setup</a>
+        </div>
+        <p class="note">Replace `EARLY_ACCESS_CHECKOUT_URL`, `SETUP_SERVICE_CHECKOUT_URL`, and `FEEDBACK_CONTACT_URL` before sharing publicly. Lemon Squeezy is the recommended first checkout.</p>
+      </section>
+    </header>
+
+    <main>
+      <section class="proof">
+        <article>
+          <span>Current state</span>
+          <strong>Compact continuity packets</strong>
+          <p>Give Codex, Claude, Cursor-style tools, or local agents a sourced project brief instead of dumping huge histories into context.</p>
+        </article>
+        <article>
+          <span>Why-layer</span>
+          <strong>Decisions and rationale</strong>
+          <p>Keep track of why choices were made, what changed, and when a decision may need review.</p>
+        </article>
+        <article>
+          <span>Safety</span>
+          <strong>Drafts before memory</strong>
+          <p>Agent updates create reviewable drafts. Detected commands are recommended, not auto-run. Project files are not silently changed.</p>
+        </article>
+      </section>
+
+      <section class="product">
+        <div>
+          <p class="eyebrow">What it gives an AI assistant</p>
+          <h2>A memory map instead of another giant prompt.</h2>
+          <p>Continuity Layer scans a project, detects docs and checks, records accepted decisions, tracks drift, and exposes CLI/MCP access for agent workflows.</p>
+        </div>
+        <div class="mock">
+          <div class="mockTop"><span></span><span></span><span></span></div>
+          <h3>Continuity Packet</h3>
+          <p>Azari Continuity Trial</p>
+          <ul>
+            <li>Recent changes: workflow modules, desktop build, MCP access</li>
+            <li>Relevant decisions: review-safe writes, local-first SQLite</li>
+            <li>Detected checks: npm test, npm run build, system sweep</li>
+            <li>Next review: drift warnings and unresolved branches</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="steps">
+        <h2>Demo flow</h2>
+        <ol>
+          <li>Scan the synthetic Azari-style fixture.</li>
+          <li>Track the project and review generated drafts.</li>
+          <li>Generate Project Health and inspect detected checks.</li>
+          <li>Fetch a small continuity packet through CLI or MCP.</li>
+          <li>Record an agent update as a draft, without accepting memory automatically.</li>
+        </ol>
+      </section>
+
+      <section class="audience">
+        <div>
+          <p class="eyebrow">Who this is for</p>
+          <h2>Built for AI-heavy builders with projects that keep evolving.</h2>
+        </div>
+        <ul>
+          <li>AI builders wiring Codex, Claude, Cursor-style tools, or local agents into real projects.</li>
+          <li>Solo developers who are tired of reloading old chats and explaining the same context.</li>
+          <li>Local-first builders who want useful memory without sending everything to a hosted SaaS.</li>
+          <li>Teams experimenting with agent workflows but still wanting human approval before durable memory changes.</li>
+        </ul>
+      </section>
+
+      <section class="pricing">
+        <p class="eyebrow">Paid early access</p>
+        <h2>$19 for AI builders who are tired of context loss.</h2>
+        <p>Early access validates demand before adding billing code, hosted services, or license enforcement.</p>
+        <div class="offerGrid">
+          <article>
+            <span>Early access</span>
+            <strong>Continuity Layer - $19</strong>
+            <ul>
+              <li>Windows desktop app</li>
+              <li>Local API, CLI, and MCP agent access</li>
+              <li>Project health, drift, checks, and continuity packets</li>
+              <li>Founder feedback channel</li>
+            </ul>
+            <a class="primary" href="EARLY_ACCESS_CHECKOUT_URL">Get early access - $19</a>
+          </article>
+          <article>
+            <span>Hands-on help</span>
+            <strong>Setup Session - $99</strong>
+            <p>Need help connecting a real project or AI workflow? Book a setup session for project scan, packet walkthrough, and CLI/MCP setup.</p>
+            <a href="SETUP_SERVICE_CHECKOUT_URL">Book setup - $99</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="trust">
+        <p class="eyebrow">Safety model</p>
+        <h2>Useful memory without silent control.</h2>
+        <div class="proof">
+          <article>
+            <span>Local-first</span>
+            <strong>SQLite-backed</strong>
+            <p>Your project memory lives locally by default.</p>
+          </article>
+          <article>
+            <span>Review-safe</span>
+            <strong>Draft-only agent writes</strong>
+            <p>Agent updates create drafts until a human accepts them.</p>
+          </article>
+          <article>
+            <span>No auto-run</span>
+            <strong>Recommended checks</strong>
+            <p>Detected commands are shown as guidance, not executed automatically.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Local-first. SQLite-backed. Review-safe.</span>
+      <div>
+        <a href="FEEDBACK_CONTACT_URL">Feedback</a>
+        <a href="../docs/LAUNCH.md">Launch notes</a>
+      </div>
+    </footer>
+  </body>
+</html>
