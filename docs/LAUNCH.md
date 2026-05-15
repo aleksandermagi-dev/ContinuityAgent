@@ -46,7 +46,9 @@ Payment:
 
 - Use an external checkout link through Lemon Squeezy first, or Gumroad/Stripe if needed.
 - Do not add in-app billing or license enforcement in this pass.
-- Replace `EARLY_ACCESS_CHECKOUT_URL`, `SETUP_SERVICE_CHECKOUT_URL`, and `FEEDBACK_CONTACT_URL` before public sharing.
+- Early-access checkout: `https://linnuteeinnovations.lemonsqueezy.com/checkout/buy/d672a3ab-665e-488d-ba78-44f59c0b0140`
+- Setup-session requests currently use the feedback form until a dedicated $99 checkout is added.
+- Feedback/contact form: `https://tally.so/r/VLbJVy`
 
 ## Setup Service Offer
 
@@ -104,13 +106,13 @@ Use these in videos, docs, or live demos:
 
 ## Feedback Path
 
-Temporary feedback placeholder:
+Feedback form:
 
 ```text
-FEEDBACK_CONTACT_URL
+https://tally.so/r/VLbJVy
 ```
 
-Replace with an email, GitHub Discussions link, Discord invite, or form before sending to buyers.
+Use this for private beta feedback, bug reports, setup-session requests, and follow-up permission.
 
 Ask early users:
 

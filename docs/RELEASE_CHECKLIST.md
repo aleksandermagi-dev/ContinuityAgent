@@ -50,12 +50,11 @@ src-tauri\target\release\continuity-layer.exe
 - Confirm the page contains:
   - `Continuity Layer Early Access - $19`
   - `Setup Session - $99`
-  - `EARLY_ACCESS_CHECKOUT_URL`
-  - `SETUP_SERVICE_CHECKOUT_URL`
-  - `FEEDBACK_CONTACT_URL`
+  - `https://linnuteeinnovations.lemonsqueezy.com/checkout/buy/d672a3ab-665e-488d-ba78-44f59c0b0140`
+  - `https://tally.so/r/VLbJVy`
   - `Known limitations`
   - `What happens after purchase`
-- Replace placeholders before sharing publicly.
+- Dedicated $99 setup checkout is still optional; setup requests currently use the feedback form.
 - Confirm demo copy only references `fixtures/azari-continuity-trial`.
 
 ## Agent Access
