@@ -1,20 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { ExtractionDraft, Project, ProjectCandidate, ProjectDiscoveryScanResult, ProjectDiscoveryWarning, ProjectImportResult, ProjectOverview, WorkflowModuleDefinition, WorkflowRun } from "../../shared/types";
+import { api, chooseNativeProjectFolder, isTauriRuntime } from "./dataClient";
 import { browserFileToPayload, prepareBrowserFolderPayload, selectedFolderName } from "./filePayload";
 import "./styles.css";
 
 const tabs = ["Overview", "Project Health", "Workflows", "Timeline / History", "Decisions / Why", "Branches", "Tasks", "Drift / Contradictions", "Connected Ideas", "Reports", "Settings / Integrations"];
-
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) }
-  });
-  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? response.statusText);
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
-}
 
 function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -33,7 +24,7 @@ function App() {
   const [workflowModules, setWorkflowModules] = useState<WorkflowModuleDefinition[]>([]);
   const [selectedWorkflow, setSelectedWorkflow] = useState("pr-reviewer");
   const [workflowInput, setWorkflowInput] = useState("");
-  const [workflowStatus, setWorkflowStatus] = useState("Workflow outputs are drafts until accepted.");
+  const [workflowStatus, setWorkflowStatus] = useState("Workflow outputs are suggested fixes until reviewed.");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -217,6 +208,33 @@ function App() {
     }
   }
 
+  async function addProjectFolder() {
+    if (!isTauriRuntime()) return;
+    setBusy(true);
+    setError("");
+    setCandidates([]);
+    setScanWarnings([]);
+    setScanStatus("Opening folder picker...");
+    try {
+      const selectedPath = await chooseNativeProjectFolder();
+      if (!selectedPath) {
+        setScanStatus("No folder selected.");
+        return;
+      }
+      setScanRootPath(selectedPath);
+      setScanStatus(`Scanning selected folder ${selectedPath}...`);
+      const response = await api<ProjectDiscoveryScanResult>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ rootPath: selectedPath }) });
+      setCandidates(response.candidates);
+      setScanWarnings(response.warnings);
+      setScanStatus(response.candidates.length ? `Found ${response.candidates.length} project candidate${response.candidates.length === 1 ? "" : "s"} from the selected folder.` : "No trackable projects found in the selected folder.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not scan selected folder");
+      setScanStatus("Native folder scan failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function trackCandidate(candidate: ProjectCandidate) {
     setBusy(true);
     setError("");
@@ -276,7 +294,7 @@ function App() {
           : { context: workflowInput };
       const run = await api<WorkflowRun>(`/api/projects/${overview.project.id}/workflows/${selectedWorkflow}/run`, { method: "POST", body: JSON.stringify(body) });
       await refreshOverview(overview.project.id);
-      setWorkflowStatus(`${run.module_id} created an advisory draft.`);
+      setWorkflowStatus(`${run.module_id} created suggested guidance for review.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not run workflow");
       setWorkflowStatus("Workflow run failed.");
@@ -293,7 +311,7 @@ function App() {
       const next = await api<ProjectOverview>(`/api/projects/${overview.project.id}/workflows/runs/${run.id}/accept`, { method: "POST", body: JSON.stringify({}) });
       setOverview(next);
       await refreshProjects(overview.project.id);
-      setWorkflowStatus(`${run.module_id} accepted into continuity records.`);
+      setWorkflowStatus(`${run.module_id} approved as implementation guidance and recorded in continuity memory.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not accept workflow");
     } finally {
@@ -378,19 +396,23 @@ function App() {
             <p className="muted">Add Project Folder is the normal tracking flow. Add Single File imports one README/doc/config/source file. Manual path scan remains available for pasted local paths.</p>
           </div>
           <div className="onboardingActions">
-            <label className="filePicker">
-              Add Project Folder
-              <input
-                type="file"
-                multiple
-                {...{ webkitdirectory: "", directory: "" }}
-                onChange={(event) => {
-                  scanProjectsFromFolder(event.currentTarget.files);
-                  event.currentTarget.value = "";
-                }}
-                disabled={busy}
-              />
-            </label>
+            {isTauriRuntime() ? (
+              <button className="filePicker nativePicker" onClick={addProjectFolder} disabled={busy}>Add Project Folder</button>
+            ) : (
+              <label className="filePicker">
+                Add Project Folder
+                <input
+                  type="file"
+                  multiple
+                  {...{ webkitdirectory: "", directory: "" }}
+                  onChange={(event) => {
+                    scanProjectsFromFolder(event.currentTarget.files);
+                    event.currentTarget.value = "";
+                  }}
+                  disabled={busy}
+                />
+              </label>
+            )}
             <label className="filePicker secondaryPicker">
               Add Single File
               <input
@@ -628,7 +650,7 @@ function TabContent({
   if (tab === "Workflows") {
     const selected = workflowModules.find((module) => module.id === selectedWorkflow);
     return <Panel title="Continuity-Aware Workflows">
-      <p className="muted">These are shared workflow modules on top of project memory. They create advisory outputs only; accepting them records continuity events, branches, and drift warnings.</p>
+      <p className="muted">These are shared workflow modules on top of project memory. They produce suggested fixes, docs, or refactor guidance first. After review, accepting a run records it as approved implementation guidance without silently changing project files.</p>
       <div className="workflowGrid">
         {workflowModules.map((module) => (
           <button className={module.id === selectedWorkflow ? "workflowCard selected" : "workflowCard"} key={module.id} onClick={() => setSelectedWorkflow(module.id)}>
@@ -659,11 +681,12 @@ function TabContent({
           <article key={run.id}>
             <div><strong>{run.module_id}</strong><span>{run.status} · {new Date(run.created_at).toLocaleString()}</span></div>
             <p>{run.output.summary}</p>
+            {run.output.implementation_notes?.length ? <List items={run.output.implementation_notes} empty="No implementation notes." /> : null}
             <List items={run.output.findings.map((finding) => `${finding.title}: ${finding.recommendation}`)} empty="No findings." />
             {run.output.proposed_patches.length > 0 && <pre className="patchPreview">{run.output.proposed_patches.join("\n\n")}</pre>}
             {run.status === "draft" && (
               <div className="workflowActions">
-                <button onClick={() => onAcceptWorkflow(run)} disabled={busy}>Accept continuity records</button>
+                <button onClick={() => onAcceptWorkflow(run)} disabled={busy}>Approve as guidance</button>
                 <button className="secondaryButton" onClick={() => onRejectWorkflow(run)} disabled={busy}>Reject</button>
               </div>
             )}

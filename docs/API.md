@@ -127,14 +127,49 @@ Detected checks are recommendations only. The app does not run discovered comman
 
 Continuity packets include project state, recent changes, active decisions, unresolved branches, active tasks, detected checks, drift/stability risks, next review recommendation, and provenance counts.
 
+## CLI And MCP Agent Access
+
+The CLI and MCP server use the local HTTP API. Start the API first with `npm run start` or `npm run dev`.
+
+CLI commands:
+
+```bash
+npm run continuity -- projects
+npm run continuity -- packet --project "Project name" --budget small
+npm run continuity -- recent --project "Project name"
+npm run continuity -- decisions --project "Project name" --topic "workflow modules"
+npm run continuity -- checks --project "Project name"
+npm run continuity -- health --project "Project name"
+npm run continuity -- update --project "Project name" --note "Update text" --source codex
+```
+
+The API URL defaults to `http://127.0.0.1:8787`. Override it with `CONTINUITY_API_URL`.
+
+MCP stdio server:
+
+```bash
+npm run mcp
+```
+
+MCP tools:
+
+- `list_projects`
+- `get_context_packet`
+- `get_recent_changes`
+- `get_relevant_decisions`
+- `get_detected_checks`
+- `record_project_update`
+
+`record_project_update` calls `/agent-updates`, creates a pending draft, and never accepts durable memory automatically. No CLI or MCP command mutates imported project files.
+
 ## Workflow Modules
 
-Workflow modules are shared continuity-aware workflows, not separate agents. They use project state and local/user-provided context, create advisory outputs, and require review before durable continuity records are added.
+Workflow modules are shared continuity-aware workflows, not separate agents. They use project state and local/user-provided context, create suggested outputs, and require review before durable continuity records are added. After acceptance, the output becomes reviewed implementation guidance that a human or AI agent can use to apply fixes explicitly.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/workflows/modules` | List built-in workflow module definitions. |
-| `POST` | `/api/projects/:id/workflows/:moduleId/run` | Run a workflow module and create an advisory draft output. |
+| `POST` | `/api/projects/:id/workflows/:moduleId/run` | Run a workflow module and create suggested guidance for review. |
 | `GET` | `/api/projects/:id/workflows/runs` | List workflow runs for a project. |
 | `POST` | `/api/projects/:id/workflows/runs/:runId/accept` | Accept a draft workflow output into continuity records. |
 | `POST` | `/api/projects/:id/workflows/runs/:runId/reject` | Reject a draft workflow output and preserve the reason. |
@@ -169,7 +204,7 @@ Run Refactor Tracker:
 
 Refactor Tracker uses the project's accepted folder snapshots. If no snapshot exists, the endpoint returns a clear missing-context error.
 
-Workflow acceptance creates normal continuity records such as events, unresolved branch suggestions, and drift warnings. It does not mutate imported project files.
+Workflow acceptance creates normal continuity records such as events, unresolved branch suggestions, drift warnings, and reviewed implementation guidance. It does not mutate imported project files; applying a patch or fix remains a separate explicit action by a human or AI agent.
 
 ## Benchmarks
 

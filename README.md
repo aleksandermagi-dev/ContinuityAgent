@@ -63,6 +63,22 @@ npm run smoke
 
 The smoke check verifies the API and frontend URLs respond.
 
+## Desktop App (Tauri)
+
+Continuity Layer is being prepared as a lightweight Tauri desktop app so local project tracking can use native folder selection and avoid browser upload limits.
+
+Desktop scripts:
+
+```bash
+npm run tauri:dev
+npm run tauri:build
+npm run package:win
+```
+
+Tauri requires the Rust toolchain, Microsoft C++ Build Tools, and WebView2 on Windows. The desktop app stores its SQLite database in the Tauri app data directory, while browser/dev mode continues to use the existing Express API and `data/project-continuity.sqlite`.
+
+The desktop path keeps the same React UI. In Tauri mode, `Add Project Folder` opens a native directory picker and scans the real local path through Rust commands. In browser mode, the same button falls back to browser-safe folder selection.
+
 ## Demo Workflow
 
 1. Start the app with `npm run dev`.
@@ -84,7 +100,49 @@ The first modules are:
 - `Doc Writer`: checks whether code or API changes need README/docs/docstring updates and drafts documentation notes.
 - `Refactor Tracker`: reviews tracked folder snapshots for TODO/FIXME markers, large files, duplicate-looking patterns, and maintainability risks.
 
-These are not separate agents. They do not maintain their own memory, call external services, run discovered commands, or mutate project files. Each run produces an advisory workflow draft. Accepting the draft records continuity events, unresolved branches, and drift warnings where appropriate; rejecting it preserves the decision for provenance.
+These are not separate agents. They do not maintain their own memory, call external services, run discovered commands, or mutate project files. Each run produces suggested guidance first: review comments, documentation drafts, refactor recommendations, or proposed patch text. After a human or AI reviewer approves the run, Continuity Layer records it as implementation guidance with provenance. Humans or AI agents can then use that approved guidance to implement fixes explicitly.
+
+## For AI Agents
+
+Continuity Layer is designed to help humans and AI agents stop re-explaining the same project over and over. It provides shared continuity memory for current state, recent changes, relevant decisions, detected checks, drift risks, and review-safe updates.
+
+Start the local API first:
+
+```bash
+npm run start
+```
+
+Then agents or humans can use the CLI:
+
+```bash
+npm run continuity -- projects
+npm run continuity -- packet --project "Azari" --budget small
+npm run continuity -- decisions --project "Azari" --topic "workflow modules"
+npm run continuity -- update --project "Azari" --note "Decision: keep agent writes review-safe." --source codex
+```
+
+The update command calls `/agent-updates`, so it creates a pending draft only. It does not accept memory or change project files.
+
+For MCP-compatible assistants, run the stdio server:
+
+```bash
+npm run mcp
+```
+
+Available MCP tools:
+
+- `list_projects`
+- `get_context_packet`
+- `get_recent_changes`
+- `get_relevant_decisions`
+- `get_detected_checks`
+- `record_project_update`
+
+Example agent prompts:
+
+- “Get a small packet for Azari.”
+- “Record this update as a draft.”
+- “Show relevant decisions about workflow modules.”
 
 ## Azari Continuity Trial
 

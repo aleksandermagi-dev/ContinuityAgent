@@ -3,17 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "continuity": "scripts/continuity-cli.mjs",
+    "continuity-mcp": "scripts/continuity-mcp.mjs"
+  },
   "scripts": {
     "dev": "concurrently \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "tsx watch server/src/index.ts",
     "dev:client": "vite --host 127.0.0.1",
     "build": "tsc -p tsconfig.json && vite build",
     "smoke": "node scripts/smoke-check.mjs",
+    "continuity": "node scripts/continuity-cli.mjs",
+    "mcp": "node scripts/continuity-mcp.mjs",
     "start": "tsx server/src/index.ts",
+    "tauri:dev": "scripts\\tauri-win-dev.cmd",
+    "tauri:build": "scripts\\tauri-win-build.cmd",
+    "package:win": "scripts\\tauri-win-build.cmd",
     "test": "vitest run",
     "verify": "npm test && npm run build"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
     "@vitejs/plugin-react": "^5.1.0",
     "better-sqlite3": "^12.5.0",
     "concurrently": "^9.2.1",
@@ -25,6 +36,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",

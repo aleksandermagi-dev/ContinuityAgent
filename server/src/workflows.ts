@@ -123,7 +123,7 @@ function runPrReviewer(input: WorkflowRunInput): WorkflowOutput {
     ));
   }
 
-  return output("PR review completed as an advisory workflow draft.", findings, "Workflow PR review recorded for human review.");
+  return output("PR review completed as suggested fix guidance pending review.", findings, "Workflow PR review recorded for human review.");
 }
 
 function runDocWriter(input: WorkflowRunInput): WorkflowOutput {
@@ -140,7 +140,7 @@ function runDocWriter(input: WorkflowRunInput): WorkflowOutput {
       2,
       "The change context suggests API, configuration, command, or exported type changes, but no docs update was provided.",
       evidenceLines(context, /(api\/|route|endpoint|export function|interface |type |config|env|command|script)/i),
-      "Draft README/API documentation before accepting the workflow recommendation."
+      "Draft README/API documentation before approving this as implementation guidance."
     ));
   } else {
     findings.push(finding(
@@ -161,7 +161,7 @@ function runDocWriter(input: WorkflowRunInput): WorkflowOutput {
   ].join("\n");
 
   return {
-    ...output("Documentation impact reviewed as an advisory draft.", findings, "Workflow documentation review recorded for human review."),
+    ...output("Documentation impact reviewed as suggested docs guidance pending review.", findings, "Workflow documentation review recorded for human review."),
     proposed_patches: [proposed]
   };
 }
@@ -215,7 +215,7 @@ function runRefactorTracker(overview: ProjectOverview): WorkflowOutput {
     ));
   }
 
-  return output("Refactor tracking completed against the current project snapshot.", findings, "Workflow refactor tracking recorded for human review.");
+  return output("Refactor tracking completed as suggested maintenance guidance pending review.", findings, "Workflow refactor tracking recorded for human review.");
 }
 
 function output(summary: string, findings: WorkflowFinding[], eventSummary: string): WorkflowOutput {
@@ -224,6 +224,11 @@ function output(summary: string, findings: WorkflowFinding[], eventSummary: stri
     findings,
     draft_comments: findings.map((item) => `[${item.category}] ${item.title}: ${item.recommendation}`),
     proposed_patches: [],
+    implementation_notes: [
+      "Suggested only until reviewed.",
+      "After acceptance, humans or AI agents may use this output as approved implementation guidance.",
+      "Continuity Layer does not silently mutate project files."
+    ],
     continuity_updates: {
       event_summary: eventSummary,
       branch_suggestions: findings.filter((item) => item.severity >= 2).map((item) => item.title),

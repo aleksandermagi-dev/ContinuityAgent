@@ -5,3 +5,5 @@ data/
 .vite/
 coverage/
 pics/
+src-tauri/target/
+src-tauri/gen/

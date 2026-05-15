@@ -446,7 +446,7 @@ export function acceptWorkflowRun(db: AppDb, projectId: string, runId: string): 
         branch_name: branchName,
         description: `Suggested by ${run.module_id}.`,
         status: "unresolved",
-        reason_created: "Accepted advisory workflow output.",
+        reason_created: "Accepted reviewed workflow recommendation.",
         current_summary: branchName,
         linked_decisions: json.stringify([]),
         timestamp,

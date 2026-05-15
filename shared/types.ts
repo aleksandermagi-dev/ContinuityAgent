@@ -282,6 +282,7 @@ export interface WorkflowOutput {
   findings: WorkflowFinding[];
   draft_comments: string[];
   proposed_patches: string[];
+  implementation_notes?: string[];
   continuity_updates: {
     event_summary: string;
     branch_suggestions: string[];
