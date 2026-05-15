@@ -38,6 +38,7 @@ const json = {
 export function createDb(dbPath = process.env.PCA_DB_PATH ?? path.join(process.cwd(), "data", "project-continuity.sqlite")) {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
+  db.pragma("foreign_keys = ON");
   db.pragma("journal_mode = WAL");
   migrate(db);
   return db;
@@ -276,6 +277,11 @@ export function listProjects(db: AppDb): Project[] {
 export function getProject(db: AppDb, projectId: string): Project | undefined {
   const row = db.prepare("SELECT * FROM projects WHERE id = ?").get(projectId);
   return row ? toProject(row as Record<string, unknown>) : undefined;
+}
+
+export function deleteProject(db: AppDb, projectId: string): boolean {
+  const result = db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
+  return result.changes > 0;
 }
 
 export function insertEvent(db: AppDb, projectId: string, summary: string, source: string): ProjectEvent {

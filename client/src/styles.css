@@ -1,4 +1,8 @@
 :root {
+  --accent: #6f4bd8;
+  --accent-strong: #5b36c6;
+  --accent-soft: #eee8ff;
+  --accent-border: #9a83ee;
   color: #20231d;
   background: #f7f4ed;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -22,9 +26,9 @@ a {
 
 button,
 a {
-  border: 1px solid #293527;
+  border: 1px solid var(--accent);
   border-radius: 6px;
-  background: #293527;
+  background: var(--accent);
   color: #fff;
   cursor: pointer;
   padding: 0.62rem 0.8rem;
@@ -38,13 +42,13 @@ button:disabled {
 
 .secondaryButton {
   background: #fffefa;
-  color: #293527;
+  color: var(--accent-strong);
 }
 
 .textButton {
   background: transparent;
   border: 0;
-  color: #293527;
+  color: var(--accent-strong);
   justify-self: start;
   padding: 0;
   text-decoration: underline;
@@ -128,8 +132,8 @@ h2 {
 }
 
 .projectList button.selected {
-  background: #e8f0dc;
-  border-color: #6f8a4d;
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
 }
 
 .projectList span,
@@ -155,11 +159,23 @@ h2 {
   justify-content: space-between;
 }
 
+.headerActions {
+  align-items: end;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: end;
+}
+
 .metricStrip,
 .scoreGrid {
   display: grid;
   gap: 0.6rem;
   grid-template-columns: repeat(4, minmax(96px, 1fr));
+}
+
+.dangerButton {
+  background: #a7355b;
+  border-color: #a7355b;
 }
 
 .metric {
@@ -263,8 +279,8 @@ h2 {
 }
 
 .filePicker {
-  background: #293527;
-  border: 1px solid #293527;
+  background: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: 6px;
   color: #fff;
   cursor: pointer;
@@ -273,7 +289,7 @@ h2 {
 
 .secondaryPicker {
   background: #fffefa;
-  color: #293527;
+  color: var(--accent-strong);
 }
 
 .filePicker input {
@@ -317,8 +333,8 @@ h2 {
 }
 
 .workflowCard.selected {
-  background: #e8f0dc;
-  border-color: #6f8a4d;
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
 }
 
 .workflowCard span,
@@ -440,8 +456,8 @@ h2 {
 }
 
 .tabs button.active {
-  background: #293527;
-  border-color: #293527;
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 

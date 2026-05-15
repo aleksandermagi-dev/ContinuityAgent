@@ -7,6 +7,7 @@ import {
   acceptWorkflowRun,
   createDb,
   createProject,
+  deleteProject,
   getOverview,
   getProject,
   getProjectChecks,
@@ -73,6 +74,12 @@ export function createApp(db: AppDb = createDb()) {
       tags: z.array(z.string()).optional()
     }).parse(req.body);
     res.status(201).json(createProject(db, input));
+  });
+
+  app.delete("/api/projects/:id", (req, res) => {
+    const deleted = deleteProject(db, req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Project not found" });
+    res.status(204).send();
   });
 
   app.post("/api/projects/from-file", async (req, res, next) => {

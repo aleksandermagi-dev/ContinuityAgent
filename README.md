@@ -1,8 +1,8 @@
-# Project Continuity Agent
+# Continuity Layer
 
 A local-first project continuity and coherence layer for long-running, evolving work.
 
-Project Continuity Agent tracks not just what changed, but why it changed: decisions, branches, checks, drift risks, project health, and compact continuity packets for people or agents who need to resume work without rereading an entire project history.
+Continuity Layer tracks not just what changed, but why it changed: decisions, branches, checks, drift risks, project health, and compact continuity packets for people or agents who need to resume work without rereading an entire project history.
 
 ## What This Is
 
@@ -66,7 +66,7 @@ The smoke check verifies the API and frontend URLs respond.
 ## Demo Workflow
 
 1. Start the app with `npm run dev`.
-2. Use `Add File` with a README/doc/config file, or use `Scan selected folder` / `Scan path`.
+2. Use `Add Project Folder` for whole-project tracking, `Add Single File` for a README/doc/config file, or `Scan path` for a pasted local path.
 3. Track a project candidate.
 4. Review the generated draft before accepting decisions/tasks/branches.
 5. Generate a Project Health report.

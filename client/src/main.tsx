@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { ExtractionDraft, Project, ProjectCandidate, ProjectDiscoveryScanResult, ProjectDiscoveryWarning, ProjectImportResult, ProjectOverview, WorkflowModuleDefinition, WorkflowRun } from "../../shared/types";
+import { browserFileToPayload, prepareBrowserFolderPayload, selectedFolderName } from "./filePayload";
 import "./styles.css";
 
 const tabs = ["Overview", "Project Health", "Workflows", "Timeline / History", "Decisions / Why", "Branches", "Tasks", "Drift / Contradictions", "Connected Ideas", "Reports", "Settings / Integrations"];
@@ -11,6 +12,7 @@ async function api<T>(path: string, options?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) }
   });
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? response.statusText);
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
@@ -19,7 +21,7 @@ function App() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [overview, setOverview] = useState<ProjectOverview | null>(null);
   const [activeTab, setActiveTab] = useState(tabs[0]);
-  const [newProject, setNewProject] = useState({ name: "Azari Tendril Reach", description: "", category: "software" });
+  const [newProject, setNewProject] = useState({ name: "", description: "", category: "software" });
   const [note, setNote] = useState("");
   const [folderPath, setFolderPath] = useState("");
   const [folderSelectionStatus, setFolderSelectionStatus] = useState("No folder snapshot selected yet.");
@@ -40,6 +42,7 @@ function App() {
     setProjects(items);
     const nextId = selectId ?? selectedId ?? items[0]?.id ?? "";
     if (nextId) setSelectedId(nextId);
+    else setSelectedId("");
   }
 
   async function refreshOverview(id = selectedId) {
@@ -68,6 +71,26 @@ function App() {
       setSelectedId(project.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create project");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteSelectedProject() {
+    if (!overview) return;
+    const confirmed = window.confirm(`Delete "${overview.project.name}" from Continuity Layer memory? This will not delete files from disk.`);
+    if (!confirmed) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api<void>(`/api/projects/${overview.project.id}`, { method: "DELETE" });
+      const items = await api<Project[]>("/api/projects");
+      setProjects(items);
+      const nextId = items[0]?.id ?? "";
+      setSelectedId(nextId);
+      if (!nextId) setOverview(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete project");
     } finally {
       setBusy(false);
     }
@@ -127,14 +150,14 @@ function App() {
     setError("");
     setScanStatus(`Importing ${file.name}...`);
     try {
-      const isText = /\.(md|txt|json|ts|tsx|js|jsx|css|html|py|rs|go|java|cs|ya?ml|toml|sql)$/i.test(file.name);
+      const payloadFile = await browserFileToPayload(file);
       const result = await api<ProjectImportResult>("/api/projects/from-file", {
         method: "POST",
         body: JSON.stringify({
           fileName: file.name,
-          path: file.webkitRelativePath || file.name,
+          path: payloadFile.path,
           size: file.size,
-          text: isText ? await file.text() : undefined
+          text: payloadFile.text
         })
       });
       await refreshProjects(result.project.id);
@@ -143,7 +166,7 @@ function App() {
       setScanStatus(`Created ${result.project.name} from ${file.name}. Review draft created.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add file");
-      setScanStatus("Add File did not complete.");
+      setScanStatus("Add Single File did not complete.");
     } finally {
       setBusy(false);
     }
@@ -175,23 +198,20 @@ function App() {
     setError("");
     setCandidates([]);
     setScanWarnings([]);
-    const selected = Array.from(files).slice(0, 600);
-    const firstPath = selected[0]?.webkitRelativePath || selected[0]?.name || "Selected folder";
-    const folderName = firstPath.split("/")[0] || "Selected folder";
+    const selected = Array.from(files);
+    const folderName = selectedFolderName(selected);
     setScanStatus(`Scanning ${folderName} for projects...`);
     try {
-      const payloadFiles = await Promise.all(selected.map(async (file) => {
-        const relativePath = file.webkitRelativePath || file.name;
-        const isText = /\.(md|txt|json|ts|tsx|js|jsx|css|html|py|rs|go|java|cs|ya?ml|toml|sql)$/i.test(relativePath);
-        return { path: relativePath, size: file.size, text: isText ? await file.text() : undefined };
-      }));
-      const response = await api<ProjectDiscoveryScanResult>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ folderName, files: payloadFiles }) });
+      const prepared = await prepareBrowserFolderPayload(selected);
+      const response = await api<ProjectDiscoveryScanResult>("/api/project-discovery/scan", { method: "POST", body: JSON.stringify({ folderName, files: prepared.files }) });
       setCandidates(response.candidates);
       setScanWarnings(response.warnings);
-      setScanStatus(response.candidates.length ? `Found ${response.candidates.length} project candidate${response.candidates.length === 1 ? "" : "s"} in ${folderName}.` : `No trackable projects found in ${folderName}.`);
+      const skipped = prepared.skippedCount ? ` Skipped or capped ${prepared.skippedCount} large/low-priority file${prepared.skippedCount === 1 ? "" : "s"}.` : "";
+      setScanStatus(response.candidates.length ? `Found ${response.candidates.length} project candidate${response.candidates.length === 1 ? "" : "s"} in ${folderName}.${skipped}` : `No trackable projects found in ${folderName}.${skipped}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not scan selected folder");
-      setScanStatus("Project scan failed.");
+      const message = err instanceof Error ? err.message : "Could not scan selected folder";
+      setError(message);
+      setScanStatus(message.includes("request entity too large") ? "Selected folder is too large for one browser upload. Try scanning the local path or select a smaller project root." : "Project scan failed. Try the project root, or paste a local path if the folder is very large.");
     } finally {
       setBusy(false);
     }
@@ -298,31 +318,23 @@ function App() {
 
   async function uploadBrowserFolder(files: FileList | null) {
     if (!overview || !files?.length) return;
-    const selectedCount = files.length;
-    const firstPath = files[0]?.webkitRelativePath || files[0]?.name || "selected folder";
-    const folderName = firstPath.split("/")[0] || "Selected folder";
+    const selected = Array.from(files);
+    const selectedCount = selected.length;
+    const folderName = selectedFolderName(selected);
     setBusy(true);
     setError("");
     setFolderSelectionStatus(`Importing ${selectedCount} file${selectedCount === 1 ? "" : "s"} from ${folderName}...`);
     try {
-      const selected = Array.from(files).slice(0, 80);
-      const payloadFiles = await Promise.all(selected.map(async (file) => {
-        const relativePath = file.webkitRelativePath || file.name;
-        const isText = /\.(md|txt|json|ts|tsx|js|jsx|css|html|py|rs|go|java|cs|ya?ml|toml|sql)$/i.test(relativePath);
-        return {
-          path: relativePath,
-          size: file.size,
-          text: isText ? await file.text() : undefined
-        };
-      }));
-      await api(`/api/projects/${overview.project.id}/folder-snapshots`, { method: "POST", body: JSON.stringify({ folderName, files: payloadFiles }) });
+      const prepared = await prepareBrowserFolderPayload(selected);
+      await api(`/api/projects/${overview.project.id}/folder-snapshots`, { method: "POST", body: JSON.stringify({ folderName, files: prepared.files }) });
       await refreshOverview(overview.project.id);
       await refreshProjects(overview.project.id);
       setActiveTab("Settings / Integrations");
-      setFolderSelectionStatus(`Imported ${payloadFiles.length} visible file${payloadFiles.length === 1 ? "" : "s"} from ${folderName}. Review draft created.`);
+      setFolderSelectionStatus(`Imported ${prepared.files.length} prioritized file${prepared.files.length === 1 ? "" : "s"} from ${folderName}. ${prepared.skippedCount ? `${prepared.skippedCount} file${prepared.skippedCount === 1 ? "" : "s"} skipped or capped. ` : ""}Review draft created.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not import selected folder");
-      setFolderSelectionStatus("Folder selection did not import.");
+      const message = err instanceof Error ? err.message : "Could not import selected folder";
+      setError(message);
+      setFolderSelectionStatus(message.includes("request entity too large") ? "Selected folder is too large for one browser upload. Try scanning a local path or selecting fewer files." : "Folder selection did not import.");
     } finally {
       setBusy(false);
     }
@@ -340,10 +352,10 @@ function App() {
       <aside className="sidebar">
         <div>
           <p className="eyebrow">Local-first cognition layer</p>
-          <h1>Project Continuity Agent</h1>
+          <h1>Continuity Layer</h1>
         </div>
         <section className="createPanel">
-          <input aria-label="Project name" value={newProject.name} onChange={(event) => setNewProject({ ...newProject, name: event.target.value })} />
+          <input aria-label="Project name" placeholder="Project name" value={newProject.name} onChange={(event) => setNewProject({ ...newProject, name: event.target.value })} />
           <textarea aria-label="Project description" placeholder="Short project description" value={newProject.description} onChange={(event) => setNewProject({ ...newProject, description: event.target.value })} />
           <button onClick={createProject} disabled={busy || !newProject.name.trim()}>Create project</button>
         </section>
@@ -362,30 +374,30 @@ function App() {
         <section className="onboardingPanel">
           <div>
             <p className="eyebrow">Project onboarding</p>
-            <h3>Add file or scan for projects</h3>
-            <p className="muted">Add File creates a project from a README/doc/config file. Scan for Projects finds trackable folders and detects checks before import.</p>
+            <h3>Add a project folder or single file</h3>
+            <p className="muted">Add Project Folder is the normal tracking flow. Add Single File imports one README/doc/config/source file. Manual path scan remains available for pasted local paths.</p>
           </div>
           <div className="onboardingActions">
             <label className="filePicker">
-              Add File
-              <input
-                type="file"
-                accept=".md,.txt,.json,.ts,.tsx,.js,.jsx,.css,.html,.py,.rs,.go,.java,.cs,.yaml,.yml,.toml,.sql"
-                onChange={(event) => {
-                  addFile(event.currentTarget.files);
-                  event.currentTarget.value = "";
-                }}
-                disabled={busy}
-              />
-            </label>
-            <label className="filePicker secondaryPicker">
-              Scan selected folder
+              Add Project Folder
               <input
                 type="file"
                 multiple
                 {...{ webkitdirectory: "", directory: "" }}
                 onChange={(event) => {
                   scanProjectsFromFolder(event.currentTarget.files);
+                  event.currentTarget.value = "";
+                }}
+                disabled={busy}
+              />
+            </label>
+            <label className="filePicker secondaryPicker">
+              Add Single File
+              <input
+                type="file"
+                accept=".md,.txt,.json,.ts,.tsx,.js,.jsx,.css,.html,.py,.rs,.go,.java,.cs,.yaml,.yml,.toml,.sql"
+                onChange={(event) => {
+                  addFile(event.currentTarget.files);
                   event.currentTarget.value = "";
                 }}
                 disabled={busy}
@@ -415,7 +427,7 @@ function App() {
             </div>
           )}
           {!busy && !candidates.length && scanWarnings.some((warning) => warning.code === "no-candidates") && (
-            <p className="muted">Try choosing the repository root, a parent folder that contains project folders, or a README/config file with Add File.</p>
+            <p className="muted">Try choosing the repository root, a parent folder that contains project folders, or a README/config file with Add Single File.</p>
           )}
         </section>
         {!overview ? (
@@ -427,11 +439,14 @@ function App() {
                 <p className="eyebrow">{overview.project.category} · {overview.project.status}</p>
                 <h2>{overview.project.name}</h2>
               </div>
-              <div className="metricStrip">
-                <Metric label="Decisions" value={counts.decisions} />
-                <Metric label="Branches" value={counts.branches} />
-                <Metric label="Tasks" value={counts.tasks} />
-                <Metric label="Drift" value={counts.drift} />
+              <div className="headerActions">
+                <div className="metricStrip">
+                  <Metric label="Decisions" value={counts.decisions} />
+                  <Metric label="Branches" value={counts.branches} />
+                  <Metric label="Tasks" value={counts.tasks} />
+                  <Metric label="Drift" value={counts.drift} />
+                </div>
+                <button className="dangerButton" onClick={deleteSelectedProject} disabled={busy}>Delete project</button>
               </div>
             </header>
 

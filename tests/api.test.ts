@@ -58,6 +58,29 @@ describe("project continuity api", () => {
     expect(markdown.text).toContain("review-before-accept");
   });
 
+  it("deletes a project and cascades continuity memory without touching source files", async () => {
+    const app = testApp();
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pca-delete-source-"));
+    tempRoots.push(projectRoot);
+    const readmePath = path.join(projectRoot, "README.md");
+    fs.writeFileSync(readmePath, "Goal: deletion should only remove database memory.\nRun npm test.");
+    const created = await request(app).post("/api/projects").send({ name: "Delete Demo" }).expect(201);
+    const projectId = created.body.id;
+    await request(app).post(`/api/projects/${projectId}/updates`).send({ note: "Decision: delete only stored continuity memory." }).expect(201);
+    await request(app).post(`/api/projects/${projectId}/folder-snapshots`).send({ folderPath: projectRoot }).expect(201);
+
+    await request(app).delete(`/api/projects/${projectId}`).expect(204);
+    await request(app).get(`/api/projects/${projectId}`).expect(404);
+    const projects = await request(app).get("/api/projects").expect(200);
+    expect(projects.body.some((project: { id: string }) => project.id === projectId)).toBe(false);
+    expect(fs.existsSync(readmePath)).toBe(true);
+  });
+
+  it("returns 404 when deleting a missing project", async () => {
+    const app = testApp();
+    await request(app).delete("/api/projects/not-a-project").expect(404);
+  });
+
   it("creates a folder snapshot from a local path and turns it into a review draft", async () => {
     const app = testApp();
     const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pca-folder-"));
