@@ -12,6 +12,8 @@ Stop re-explaining your project to AI.
 
 The product helps AI builders preserve project context, decisions, checks, branches, drift risks, and review-safe updates so assistants can resume work with compact sourced context instead of a giant prompt dump.
 
+Use [Product Page Copy](PRODUCT_PAGE_COPY.md) for Lemon Squeezy, Tally, and short sales-page descriptions.
+
 ## First Buyer
 
 Primary buyer:
@@ -50,6 +52,12 @@ Payment:
 - Setup-session requests currently use the feedback form until a dedicated $99 checkout is added.
 - Feedback/contact form: `https://tally.so/r/VLbJVy`
 
+Buyer promise:
+
+```text
+Scan one real project, generate a health report, and give your assistant a compact continuity packet instead of re-explaining the whole project again.
+```
+
 ## Setup Service Offer
 
 Price:
@@ -65,6 +73,8 @@ What buyers get:
 - CLI/MCP setup guidance for their AI tool.
 - Review-safe workflow explanation.
 - Notes on what would make the project easier for agents to assist.
+
+Position this as help for people who like the idea but do not want to fight setup alone.
 
 ## Demo Script
 

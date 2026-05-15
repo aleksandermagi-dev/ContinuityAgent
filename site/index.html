@@ -17,19 +17,43 @@
         </div>
       </nav>
       <section class="heroCopy">
-        <p class="eyebrow">Local-first project memory for AI builders</p>
+        <p class="eyebrow">Private beta for AI builders</p>
         <h1>Stop re-explaining your project to AI.</h1>
-        <p class="lede">Continuity Layer is shared project memory for humans and AI agents. It tracks what changed, why it changed, what is unresolved, and what an assistant should know before helping.</p>
+        <p class="lede">Continuity Layer gives Codex, Claude, Cursor-style tools, and local agents a compact memory packet for your project: current state, decisions, drift risks, detected checks, and what changed recently.</p>
         <div class="actions">
           <a class="primary" id="checkoutLink" href="https://linnuteeinnovations.lemonsqueezy.com/checkout/buy/d672a3ab-665e-488d-ba78-44f59c0b0140">Get early access - $19</a>
           <a href="https://github.com/aleksandermagi-dev/ContinuityAgent">View GitHub</a>
           <a href="../docs/AGENT_SETUP.md">Read agent setup</a>
         </div>
-        <p class="note">Private beta note: early access uses Lemon Squeezy. Setup-session requests and feedback currently go through the Tally form.</p>
+        <p class="note">Windows-first private beta. Local-first, SQLite-backed, and review-safe: agent writes create drafts until you approve them.</p>
       </section>
     </header>
 
     <main>
+      <section class="pain">
+        <div>
+          <p class="eyebrow">The problem</p>
+          <h2>AI tools can write code fast. They still forget the project.</h2>
+        </div>
+        <div class="painGrid">
+          <article>
+            <span>Context loss</span>
+            <strong>You keep restating the same history</strong>
+            <p>What the project is, why choices were made, what broke last time, and what checks matter.</p>
+          </article>
+          <article>
+            <span>Drift</span>
+            <strong>Old assumptions quietly go stale</strong>
+            <p>Goals, terminology, branches, and implementation direction can diverge without a clean review point.</p>
+          </article>
+          <article>
+            <span>Tool sprawl</span>
+            <strong>Every assistant starts from zero</strong>
+            <p>Continuity Layer gives humans and agents the same local continuity spine instead of another isolated chat.</p>
+          </article>
+        </div>
+      </section>
+
       <section class="proof">
         <article>
           <span>Current state</span>
@@ -52,7 +76,13 @@
         <div>
           <p class="eyebrow">What it gives an AI assistant</p>
           <h2>A memory map instead of another giant prompt.</h2>
-          <p>Continuity Layer scans a project, detects docs and checks, records accepted decisions, tracks drift, and exposes CLI/MCP access for agent workflows.</p>
+          <p>Scan a project once, review the generated drafts, then let your assistant request a sourced packet when it needs to continue work. The goal is fewer repeated explanations and fewer confused edits.</p>
+          <ul class="checkList">
+            <li>Project health, detected checks, and stability risks</li>
+            <li>Decision lineage and why-layer notes</li>
+            <li>CLI and MCP access for agent workflows</li>
+            <li>Draft-only updates until reviewed</li>
+          </ul>
         </div>
         <div class="mock">
           <div class="mockTop"><span></span><span></span><span></span></div>
@@ -78,6 +108,28 @@
         </ol>
       </section>
 
+      <section class="outcome">
+        <p class="eyebrow">What early users should test</p>
+        <h2>Measure it by how much re-explaining it removes.</h2>
+        <div class="proof">
+          <article>
+            <span>Before</span>
+            <strong>Paste huge context again</strong>
+            <p>Reload old chats, summarize the repo, remind the assistant what not to break, and hope it remembers.</p>
+          </article>
+          <article>
+            <span>After</span>
+            <strong>Fetch a continuity packet</strong>
+            <p>Ask for a small, medium, or large packet with current state, recent changes, decisions, checks, and risks.</p>
+          </article>
+          <article>
+            <span>Result</span>
+            <strong>Cleaner handoffs</strong>
+            <p>Humans and agents can resume from the same project memory without silently mutating source files.</p>
+          </article>
+        </div>
+      </section>
+
       <section class="audience">
         <div>
           <p class="eyebrow">Who this is for</p>
@@ -94,7 +146,7 @@
       <section class="pricing">
         <p class="eyebrow">Paid early access</p>
         <h2>$19 for AI builders who are tired of context loss.</h2>
-        <p>Early access validates demand before adding billing code, hosted services, or license enforcement.</p>
+        <p>Get the Windows early-access build, agent setup docs, CLI/MCP access, and a direct feedback path while the product is still small enough to shape around real users.</p>
         <div class="offerGrid">
           <article>
             <span>Early access</span>
@@ -110,7 +162,7 @@
           <article>
             <span>Hands-on help</span>
             <strong>Setup Session - $99</strong>
-            <p>Need help connecting a real project or AI workflow? Book a setup session for project scan, packet walkthrough, and CLI/MCP setup.</p>
+            <p>Need help connecting a real project or AI workflow? Request a setup session for project scan, packet walkthrough, CLI/MCP setup, and next-step recommendations.</p>
             <a href="https://tally.so/r/VLbJVy">Request setup - $99</a>
           </article>
         </div>

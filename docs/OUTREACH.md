@@ -30,9 +30,9 @@ Track this manually in a spreadsheet or project note:
 ```text
 I built Continuity Layer because I got tired of re-explaining the same project context to AI tools.
 
-It is local-first project memory for humans and AI agents: decisions, drift, detected checks, and compact continuity packets through CLI/MCP.
+It is local-first project memory for humans and AI agents: current state, decisions, drift, detected checks, and compact continuity packets through CLI/MCP.
 
-Early access is $19. I am looking for AI builders who want to test it on real messy projects.
+Early access is $19. I am looking for AI builders who want to test it on real messy projects and tell me whether it actually reduces context re-explaining.
 ```
 
 ## AI-Builder Pain-Point Post
@@ -43,6 +43,16 @@ AI coding tools are powerful, but they still forget why your project is shaped t
 Continuity Layer gives agents a compact, sourced project packet: what changed, why, what is unresolved, and what checks matter.
 
 If you are building with Codex/Claude/Cursor/local agents, I am opening $19 early access.
+```
+
+## Short Product Post
+
+```text
+Stop re-explaining your project to AI.
+
+Continuity Layer gives AI assistants a compact local memory packet for your project: current state, recent changes, decisions, checks, drift risks, and what needs review next.
+
+Windows private beta is open for $19.
 ```
 
 ## Setup-Service Pitch
@@ -61,6 +71,16 @@ Hey, I built a local-first project memory tool for AI builders called Continuity
 It helps agents stop losing project context by exposing continuity packets, decisions, checks, and draft-only updates through CLI/MCP.
 
 Would you want a free early copy to test or demo? If it fits your audience, I can track referrals manually for the first launch.
+```
+
+## Cold DM For AI Builders
+
+```text
+Hey, quick question: do you ever lose time re-explaining project context to AI coding tools?
+
+I am testing Continuity Layer, a local-first project memory app that gives agents compact continuity packets through CLI/MCP.
+
+I am looking for a few AI builders to try it on real projects. Early access is $19, but I mostly want sharp feedback from people who actually use AI tools heavily.
 ```
 
 ## Follow-Up Questions

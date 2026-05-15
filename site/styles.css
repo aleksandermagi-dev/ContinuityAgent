@@ -115,6 +115,7 @@ main {
 }
 
 .proof,
+.painGrid,
 .offerGrid {
   display: grid;
   gap: 1rem;
@@ -178,11 +179,25 @@ article strong {
   margin-bottom: 0.7rem;
 }
 
+.pain,
 .steps,
+.outcome,
 .audience,
 .afterPurchase,
 .limitations {
   max-width: 880px;
+}
+
+.checkList {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 1.2rem 0 0;
+  padding: 1.2rem 1.2rem 1.2rem 2.4rem;
+}
+
+.checkList li {
+  margin-bottom: 0.55rem;
 }
 
 .pricing,
@@ -246,6 +261,7 @@ footer {
   }
 
   .proof,
+  .painGrid,
   .product,
   .offerGrid,
   .audience,
